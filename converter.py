@@ -53,6 +53,27 @@ def parse_line(text: str):
             "is_fire": is_fire
         }
 
+
+    # -----------------------------------------------------
+    # SINGLE SIZE FORMAT: 70 mm2 178 lm
+    # -----------------------------------------------------
+    pattern_single_size = (
+        r'(?P<power>\d+(?:\.\d+)?)\s*mm2'
+        r'.*?'
+        r'(?P<length>\d+(?:\.\d+)?)\s*(?:lm|ml|m)?\s*$'
+    )
+    
+    match = re.search(pattern_single_size, text, re.IGNORECASE)
+    if match:
+        return {
+            "raw_text": text,
+            "cores": 1,  # assume single core
+            "power_size": float(match.group("power")),
+            "earth_size": None,
+            "length": float(match.group("length")),
+            "is_fire": is_fire
+        }
+
     # -----------------------------------------------------
     # SIMPLE 4x6 FORMAT
     # -----------------------------------------------------
@@ -265,4 +286,5 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
