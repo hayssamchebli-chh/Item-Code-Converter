@@ -59,7 +59,8 @@ def parse_line(text: str):
     pattern_simple = (
         r'(?P<cores>\d+)\s*[xX]\s*'
         r'(?P<power>\d+(?:\.\d+)?)'
-        r'.*?(?P<length>\d+(?:\.\d+)?)$'
+        r'.*?'
+        r'(?P<length>\d+(?:\.\d+)?)\s*(?:lm|ml|m)?\s*$'
     )
 
     match = re.search(pattern_simple, text, re.IGNORECASE)
@@ -264,3 +265,4 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
