@@ -1,0 +1,264 @@
+import re
+import pandas as pd
+
+ROLL_LENGTH = 92
+
+
+# =========================================================
+# PARSER
+# =========================================================
+def parse_line(text: str):
+    text = text.strip()
+
+    # Detect fire cable
+    is_fire = bool(re.search(r"(fire|fr|resistant|cei)", text, re.IGNORECASE))
+
+    # -----------------------------------------------------
+    # NEW FORMAT: Size (2C6) mm2 ML 20
+    # -----------------------------------------------------
+    pattern_parenthesis = (
+        r'\(\s*(?P<cores>\d+)\s*[cC]\s*(?P<power>\d+(?:\.\d+)?)\s*\)'
+        r'.*?(?P<length>\d+(?:\.\d+)?)$'
+    )
+
+    match = re.search(pattern_parenthesis, text, re.IGNORECASE)
+    if match:
+        return {
+            "raw_text": text,
+            "cores": int(match.group("cores")),
+            "power_size": float(match.group("power")),
+            "earth_size": None,
+            "length": float(match.group("length")),
+            "is_fire": is_fire
+        }
+
+    # -----------------------------------------------------
+    # EXISTING +E FORMAT
+    # -----------------------------------------------------
+    pattern_plus_e = (
+        r'(?P<cores>\d+)\s*[cC]\s*'
+        r'(?P<power>\d+(?:\.\d+)?)\s*mm²'
+        r'(?:\s*\+\s*E\s*=\s*(?P<earth>\d+(?:\.\d+)?)\s*mm²)?'
+        r'.*?(?P<length>\d+(?:\.\d+)?)$'
+    )
+
+    match = re.search(pattern_plus_e, text, re.IGNORECASE)
+    if match:
+        return {
+            "raw_text": text,
+            "cores": int(match.group("cores")),
+            "power_size": float(match.group("power")),
+            "earth_size": float(match.group("earth")) if match.group("earth") else None,
+            "length": float(match.group("length")),
+            "is_fire": is_fire
+        }
+
+    # -----------------------------------------------------
+    # SIMPLE 4x6 FORMAT
+    # -----------------------------------------------------
+    pattern_simple = (
+        r'(?P<cores>\d+)\s*[xX]\s*'
+        r'(?P<power>\d+(?:\.\d+)?)'
+        r'.*?(?P<length>\d+(?:\.\d+)?)$'
+    )
+
+    match = re.search(pattern_simple, text, re.IGNORECASE)
+    if match:
+        return {
+            "raw_text": text,
+            "cores": int(match.group("cores")),
+            "power_size": float(match.group("power")),
+            "earth_size": None,
+            "length": float(match.group("length")),
+            "is_fire": is_fire
+        }
+
+    raise ValueError(f"Cannot parse line: {text}")
+
+
+# =========================================================
+# RULES ENGINE
+# =========================================================
+
+def round_rolls(length):
+    rolls = length / ROLL_LENGTH
+    integer_part = int(rolls)
+    decimal = rolls - integer_part
+
+    if decimal >= 0.2:
+        integer_part += 1
+
+    return max(integer_part, 1)
+
+
+def power_family(size):
+    if size <= 35:
+        return "NYM"
+    return "NYY"
+
+
+def build_power_code(cores, size):
+    # Rule 9 — Single core power
+    if cores == 1:
+        return f"CDL-NYA {int(size)}"
+
+    family = power_family(size)
+
+    if family == "NYM":
+        # Rule 2 — RE only for 1.5 and 2.5
+        if size in (1.5, 2.5):
+            return f"CDL-NYM {cores}X{size}RE"
+        return f"CDL-NYM {cores}X{int(size)}"
+
+    return f"CDL-NYY {cores}X{int(size)}SM"
+
+
+def build_earth_code(size, length):
+    # Rule 5 — Always GN-YL--MT
+    if size <= 6:
+        rolls = round_rolls(length)
+        return f"CDL-NYA {int(size)} GN-YL--MT", str(rolls), "rolls"
+
+    return f"CDL-NYA {int(size)} GN-YL--MT", f"{length:.2f}", "m"
+
+
+# =========================================================
+# TRANSFORMATION
+# =========================================================
+
+def transform_to_rows(original_text):
+    data = parse_line(original_text)
+    rows = []
+
+    cores = data["cores"]
+    size = data["power_size"]
+    earth = data["earth_size"]
+    length = data["length"]
+    is_fire = data["is_fire"]
+
+    text_lower = original_text.lower()
+
+    # =====================================================
+    # Detect green-yellow single core (EARTH)
+    # =====================================================
+    is_green_yellow = any(
+        keyword in text_lower
+        for keyword in ["yellow-green", "green-yellow", "gn-yl"]
+    )
+
+    # =====================================================
+    # Rule 4 — 5x → 4 power + 1 earth
+    # =====================================================
+    if cores == 5 and earth is None:
+        earth = size
+        cores = 4
+
+    # =====================================================
+    # FIRE RULE
+    # =====================================================
+    if is_fire:
+        rows.append({
+            "Original Text": original_text,
+            "Converted Code": f"CDL-SFC2XU {cores}X{int(size)} --CEI",
+            "Quantity": f"{length:.2f}",
+            "Unit": "m"
+        })
+
+        if earth:
+            code, qty, unit = build_earth_code(earth, length)
+            rows.append({
+                "Original Text": original_text,
+                "Converted Code": code,
+                "Quantity": qty,
+                "Unit": unit
+            })
+
+        return rows
+
+    # =====================================================
+    # SINGLE CORE EARTH (Green-Yellow)
+    # =====================================================
+    if cores == 1 and is_green_yellow:
+        code, qty, unit = build_earth_code(size, length)
+
+        rows.append({
+            "Original Text": original_text,
+            "Converted Code": code,
+            "Quantity": qty,
+            "Unit": unit
+        })
+
+        return rows
+
+    # =====================================================
+    # NORMAL POWER
+    # =====================================================
+    power_code = build_power_code(cores, size)
+
+    rows.append({
+        "Original Text": original_text,
+        "Converted Code": power_code,
+        "Quantity": f"{length:.2f}",
+        "Unit": "m"
+    })
+
+    # =====================================================
+    # EARTH (+E rule)
+    # =====================================================
+    if earth:
+        code, qty, unit = build_earth_code(earth, length)
+        rows.append({
+            "Original Text": original_text,
+            "Converted Code": code,
+            "Quantity": qty,
+            "Unit": unit
+        })
+
+    return rows
+
+
+
+# =========================================================
+# EXPORT
+# =========================================================
+
+def export_to_excel(input_lines, output_file="Cable_Conversion_Output.xlsx"):
+    all_rows = []
+
+    for line in input_lines:
+        line = line.strip()
+        if not line:
+            continue
+
+        try:
+            all_rows.extend(transform_to_rows(line))
+        except Exception as e:
+            print(f"Skipped: {line} | Error: {e}")
+
+    df = pd.DataFrame(all_rows)
+    df.to_excel(output_file, index=False)
+
+    print(f"✅ Excel file created: {output_file}")
+
+
+# =========================================================
+# INPUT
+# =========================================================
+
+inputs = [
+    "Size (2C6) mm2	ML	20",
+    "Size (4C4) mm2	ML	10",
+    "Size (4C6) mm2	ML	74",
+    "Size (4C10) mm2	ML	45",
+    "Size (1x4) mm2 Yellow-Green	ML	10",
+    "Size (1x6) mm2 Yellow-Green	ML	94",
+    "Size (1x10) mm2 Yellow-Green	ML	45"
+
+]
+
+export_to_excel(inputs)
+
+
+#########################################################################################################
+# python "C:/Users/hayss/OneDrive/Documents/Cabels Sales Manger Project - Manuel/Phase 1/Rule 2/Rule 2 Conver.py"
+#########################################################################################################
