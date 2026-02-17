@@ -171,11 +171,14 @@ def build_power_code(cores, size):
 # =========================================================
 
 def build_earth_code(size, length):
+    # EARTH ≤ 6 mm² → roll logic, NO --MT
     if size <= 6:
         rolls = round_rolls(length, ROLL_LENGTH)
         return f"CDL-NYA {int(size)} GN-YL", str(rolls), ""
 
+    # EARTH ≥ 10 mm² → meters with --MT
     return f"CDL-NYA {int(size)} GN-YL--MT", f"{length:.2f}", "m"
+
 
 
 # =========================================================
@@ -388,6 +391,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
