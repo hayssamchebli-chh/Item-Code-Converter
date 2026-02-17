@@ -163,25 +163,25 @@ def parse_line(text: str):
             "length": float(match.group("length")),
             "is_fire": is_fire
         }
-
     # -----------------------------------------------------
     # SC / C FORMAT: 4SC, 240 MR 50  OR  4C, 10 MR 20
     # -----------------------------------------------------
-    pattern_sc = (
-        r'(?P<cores>\d+)\s*S?C\s*,\s*'
+    pattern_sc = re.search(
+        r'^\s*(?P<cores>\d+)\s*S?C\s*,\s*'
         r'(?P<power>\d+(?:\.\d+)?)\s*'
         r'(?:MR|ML|M)?\s*'
-        r'(?P<length>\d+(?:\.\d+)?)\s*$'
+        r'(?P<length>\d+(?:\.\d+)?)\s*$',
+        text,
+        re.IGNORECASE
     )
     
-    match = re.search(pattern_sc, text, re.IGNORECASE)
-    if match:
+    if pattern_sc:
         return {
             "raw_text": text,
-            "cores": int(match.group("cores")),
-            "power_size": float(match.group("power")),
+            "cores": int(pattern_sc.group("cores")),
+            "power_size": float(pattern_sc.group("power")),
             "earth_size": None,
-            "length": float(match.group("length")),
+            "length": float(pattern_sc.group("length")),
             "is_fire": is_fire
         }
 
@@ -511,6 +511,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
