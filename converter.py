@@ -315,7 +315,7 @@ def transform_to_rows(original_text, force_fire=False):
         if B < A and A > 35:
             rows.append({
                 "Original Text": original_text,
-                "Converted Code": f"CDL-NYY 3X{int(A)}+{int(B)}SM",
+                "Converted Code": f"CDL-NYY 3X{format_size(A)}+{format_size(B)}SM",
                 "Quantity": f"{length:.2f}",
                 "Unit": "m"
             })
@@ -490,6 +490,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
