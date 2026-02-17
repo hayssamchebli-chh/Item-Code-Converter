@@ -5,51 +5,72 @@ from converter import transform_to_rows
 
 st.set_page_config(page_title="CDL Cable Converter", layout="wide")
 
+import streamlit as st
+
 st.title("🔌 CDL Cable Converter")
 
-st.markdown("Paste your cable lines below (one per line) and click Convert.")
-
-# Text input area
-input_text = st.text_area(
-    "Paste Cable Text Here:",
-    height=250,
-    placeholder="Example:\nSize (2C6) mm2 ML 20\nSize (1x4) mm2 Yellow-Green ML 10"
+st.markdown("### 🟢 Standard Cable Conversion")
+standard_input = st.text_area(
+    "Paste Standard Cable Lines Here:",
+    height=200,
+    key="standard_box"
 )
 
+st.markdown("### 🔥 Fire Cable Conversion")
+fire_input = st.text_area(
+    "Paste Fire Cable Lines Here:",
+    height=200,
+    key="fire_box"
+)
+
+
 # Convert button
-if st.button("🚀 Convert"):
+if st.button("Convert"):
 
-    if not input_text.strip():
-        st.warning("Please paste some text first.")
-    else:
-        lines = input_text.splitlines()
-        all_rows = []
+    all_rows = []
 
-        for line in lines:
+    # -----------------------------
+    # STANDARD CABLES
+    # -----------------------------
+    if standard_input.strip():
+        standard_lines = standard_input.splitlines()
+
+        for line in standard_lines:
             line = line.strip()
             if not line:
                 continue
             try:
-                all_rows.extend(transform_to_rows(line))
+                all_rows.extend(transform_to_rows(line, force_fire=False))
             except Exception as e:
-                st.error(f"Skipped line: {line} | Error: {e}")
+                st.warning(f"Skipped (Standard): {line}")
 
-        if all_rows:
-            df = pd.DataFrame(all_rows)
+    # -----------------------------
+    # FIRE CABLES (Force Fire)
+    # -----------------------------
+    if fire_input.strip():
+        fire_lines = fire_input.splitlines()
 
-            st.success("Conversion completed!")
-            st.dataframe(df, use_container_width=True)
+        for line in fire_lines:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                all_rows.extend(transform_to_rows(line, force_fire=True))
+            except Exception as e:
+                st.warning(f"Skipped (Fire): {line}")
 
-            # ✅ Excel export using buffer (correct way)
-            buffer = io.BytesIO()
-            df.to_excel(buffer, index=False, engine="openpyxl")
-            buffer.seek(0)
+    # -----------------------------
+    # Output
+    # -----------------------------
+    if all_rows:
+        df = pd.DataFrame(all_rows)
+        st.dataframe(df)
 
-            st.download_button(
-                label="📥 Download Excel",
-                data=buffer,
-                file_name="Cable_Conversion_Output.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-        else:
-            st.warning("No valid lines were converted.")
+        st.download_button(
+            "⬇ Download Excel",
+            df.to_csv(index=False),
+            file_name="Cable_Conversion_Output.csv",
+            mime="text/csv"
+        )
+    else:
+        st.info("No valid lines detected.")
