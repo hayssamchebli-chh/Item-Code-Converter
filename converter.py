@@ -46,6 +46,15 @@ def row_contains_fire(text: str) -> bool:
 # =========================================================
 def parse_line(text: str):
     text = text.strip()
+    # -----------------------------------------------------
+    # Extract quantity (last numeric value in line)
+    # -----------------------------------------------------
+    qty_match = re.findall(r'\d+(?:\.\d+)?', text)
+    
+    if not qty_match:
+        raise ValueError(f"No numeric quantity found: {text}")
+    
+    length = float(qty_match[-1])
 
     # Detect fire cable
     is_fire = bool(re.search(r"(fire|fr|resistant|cei)", text, re.IGNORECASE))
@@ -114,12 +123,11 @@ def parse_line(text: str):
     # -----------------------------------------------------
     # SIMPLE 4x6 FORMAT
     # -----------------------------------------------------
-    pattern_simple = (
-        r'(?P<cores>\d+)\s*[xX]\s*'
-        r'(?P<power>\d+(?:\.\d+)?)'
-        r'.*?'
-        r'(?P<length>\d+(?:\.\d+)?)\s*(?:lm|ml|m)?\s*$'
-    )
+   pattern_simple = (
+    r'(?P<cores>\d+)\s*[xX]\s*'
+    r'(?P<power>\d+(?:\.\d+)?)'
+)
+
 
     match = re.search(pattern_simple, text, re.IGNORECASE)
     if match:
@@ -128,9 +136,10 @@ def parse_line(text: str):
             "cores": int(match.group("cores")),
             "power_size": float(match.group("power")),
             "earth_size": None,
-            "length": float(match.group("length")),
+            "length": length,
             "is_fire": is_fire
         }
+
 
     
     # -----------------------------------------------------
@@ -479,6 +488,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
