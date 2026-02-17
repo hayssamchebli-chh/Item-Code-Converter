@@ -134,21 +134,26 @@ def round_rolls(length):
     return max(integer_part, 1)
 
 
-def power_family(size):
-    if size <= 35:
+def power_family(size, cores=None):
+    # Special override
+    if cores == 4 and size == 35:
+        return "NYY"
+
+    if size < 35:
         return "NYM"
+
     return "NYY"
 
 
+
 def build_power_code(cores, size):
-    # Rule 9 — Single core power
+    # Single core non-earth handled separately
     if cores == 1:
         return f"CDL-NYA {int(size)}"
 
-    family = power_family(size)
+    family = power_family(size, cores)
 
     if family == "NYM":
-        # Rule 2 — RE only for 1.5 and 2.5
         if size in (1.5, 2.5):
             return f"CDL-NYM {cores}X{size}RE"
         return f"CDL-NYM {cores}X{int(size)}"
@@ -156,11 +161,11 @@ def build_power_code(cores, size):
     return f"CDL-NYY {cores}X{int(size)}SM"
 
 
+
 def build_earth_code(size, length):
-    # Rule 5 — Always GN-YL--MT
     if size <= 6:
         rolls = round_rolls(length)
-        return f"CDL-NYA {int(size)} GN-YL", str(rolls), "rolls"
+        return f"CDL-NYA {int(size)} GN-YL", str(rolls), ""
 
     return f"CDL-NYA {int(size)} GN-YL--MT", f"{length:.2f}", "m"
 
@@ -182,22 +187,35 @@ def transform_to_rows(original_text):
     text_lower = original_text.lower()
 
     # =====================================================
-    # Detect green-yellow single core (EARTH)
+    # 1️⃣ CAT6 RULE (Priority 1)
     # =====================================================
-    is_green_yellow = any(
-        keyword in text_lower
-        for keyword in ["yellow-green", "green-yellow", "gn-yl"]
-    )
+    if "cat6" in text_lower:
+        rolls = length / 305
+        rolls = int(rolls) + (1 if rolls % 1 > 0 else 0)
+        rolls = max(rolls, 1)
+
+        rows.append({
+            "Original Text": original_text,
+            "Converted Code": "NEX-CAT6UTPLSZH-GY",
+            "Quantity": str(rolls),
+            "Unit": ""
+        })
+        return rows
 
     # =====================================================
-    # Rule 4 — 5x → 4 power + 1 earth
+    # 2️⃣ NYZ RULE (Priority 2)
     # =====================================================
-    if cores == 5 and earth is None:
-        earth = size
-        cores = 4
+    if "nyz" in text_lower:
+        rows.append({
+            "Original Text": original_text,
+            "Converted Code": f"CDL-NYZ {cores}X{int(size)}",
+            "Quantity": f"{length:.2f}",
+            "Unit": "m"
+        })
+        return rows
 
     # =====================================================
-    # FIRE RULE
+    # 3️⃣ FIRE RULE (Overrides Power Rules)
     # =====================================================
     if is_fire:
         rows.append({
@@ -219,22 +237,90 @@ def transform_to_rows(original_text):
         return rows
 
     # =====================================================
-    # SINGLE CORE EARTH (Green-Yellow)
+    # 4️⃣ 3xA+B LOCKED RULE
     # =====================================================
-    if cores == 1 and is_green_yellow:
-        code, qty, unit = build_earth_code(size, length)
+    pattern_3x_plus = re.search(
+        r'3\s*[xX]\s*(\d+(?:\.\d+)?)\s*\+\s*(\d+(?:\.\d+)?)',
+        original_text
+    )
 
+    if pattern_3x_plus:
+        A = float(pattern_3x_plus.group(1))
+        B = float(pattern_3x_plus.group(2))
+
+        if B < A and A > 35:
+            rows.append({
+                "Original Text": original_text,
+                "Converted Code": f"CDL-NYY 3X{int(A)}+{int(B)}SM",
+                "Quantity": f"{length:.2f}",
+                "Unit": "m"
+            })
+            return rows
+
+    # =====================================================
+    # 5️⃣ 5X RULE → 4 power + 1 earth
+    # =====================================================
+    if cores == 5 and earth is None:
+        earth = size
+        cores = 4
+
+    # =====================================================
+    # 6️⃣ +NUMBER SPLIT RULE (4x10+10 etc.)
+    # =====================================================
+    pattern_plus_number = re.search(
+        r'(\d+)\s*[xX]\s*(\d+(?:\.\d+)?)\s*\+\s*(\d+(?:\.\d+)?)',
+        original_text
+    )
+
+    if pattern_plus_number:
+        cores = int(pattern_plus_number.group(1))
+        size = float(pattern_plus_number.group(2))
+        earth = float(pattern_plus_number.group(3))
+
+    # =====================================================
+    # 7️⃣ SINGLE CORE LOGIC
+    # =====================================================
+    is_green_yellow = any(
+        keyword in text_lower
+        for keyword in ["yellow-green", "green-yellow", "gn-yl"]
+    )
+
+    if cores == 1:
+        # Earth
+        if is_green_yellow:
+            code, qty, unit = build_earth_code(size, length)
+            rows.append({
+                "Original Text": original_text,
+                "Converted Code": code,
+                "Quantity": qty,
+                "Unit": unit
+            })
+            return rows
+
+        # Detect other colors
+        color_match = re.search(r'\b(wt|bk|rd|bl|gy)\b', text_lower)
+        if color_match:
+            color = color_match.group(1).upper()
+            rows.append({
+                "Original Text": original_text,
+                "Converted Code": f"CDL-NYA {int(size)} {color}",
+                "Quantity": f"{length:.2f}",
+                "Unit": "m"
+            })
+            return rows
+
+        # No color → treat as earth
+        code, qty, unit = build_earth_code(size, length)
         rows.append({
             "Original Text": original_text,
             "Converted Code": code,
             "Quantity": qty,
             "Unit": unit
         })
-
         return rows
 
     # =====================================================
-    # NORMAL POWER
+    # 8️⃣ NORMAL POWER
     # =====================================================
     power_code = build_power_code(cores, size)
 
@@ -246,7 +332,7 @@ def transform_to_rows(original_text):
     })
 
     # =====================================================
-    # EARTH (+E rule)
+    # 9️⃣ EARTH SPLIT (from +number or 5x)
     # =====================================================
     if earth:
         code, qty, unit = build_earth_code(earth, length)
@@ -307,6 +393,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
