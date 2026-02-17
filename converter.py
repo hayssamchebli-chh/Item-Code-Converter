@@ -53,11 +53,11 @@ def parse_line(text: str):
     
     if not qty_match:
         raise ValueError(f"No numeric quantity found: {text}")
-    
-        length = float(qty_match[-1])
-    
-        # Detect fire cable
-        is_fire = bool(re.search(r"(fire|fr|resistant|cei)", text, re.IGNORECASE))
+
+    length = float(qty_match[-1])
+
+    # Detect fire cable
+    is_fire = bool(re.search(r"(fire|fr|resistant|cei)", text, re.IGNORECASE))
 
     # -----------------------------------------------------
     # PRIORITY PATTERN: (4X150mm2)
