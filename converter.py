@@ -252,7 +252,7 @@ def transform_to_rows(original_text, force_fire=False):
     
         rows.append({
             "Original Text": original_text,
-            "Converted Code":f"CDL-SFC2XU {cores}X{size} --CEI",
+            "Converted Code":f"CDL-SFC2XU {cores}X{format_size(size)} --CEI",
             "Quantity": f"{length:.2f}",
             "Unit": "m"
         })
@@ -490,6 +490,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
