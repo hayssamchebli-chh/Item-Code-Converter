@@ -17,7 +17,7 @@ with col1:
     st.markdown("### 🟢 Standard Cables")
     standard_input = st.text_area(
         "Paste Standard Cable Lines:",
-        height=350,
+        height=200,
         key="standard_box"
     )
 
@@ -28,12 +28,12 @@ with col2:
     st.markdown("### 🔥 Fire Cables")
     fire_input = st.text_area(
         "Paste Fire Cable Lines:",
-        height=350,
+        height=200,
         key="fire_box"
     )
 
 # Convert button
-st.markdown("---")
+@st.markdown("---")
 
 if st.button(" Convert", use_container_width=True):
 
@@ -66,3 +66,4 @@ if st.button(" Convert", use_container_width=True):
         st.dataframe(df, use_container_width=True)
     else:
         st.info("No valid lines detected.")
+
