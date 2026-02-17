@@ -33,7 +33,7 @@ with col2:
     )
 
 # Convert button
-@st.markdown("---")
+#st.markdown("---")
 
 if st.button(" Convert", use_container_width=True):
 
@@ -66,4 +66,5 @@ if st.button(" Convert", use_container_width=True):
         st.dataframe(df, use_container_width=True)
     else:
         st.info("No valid lines detected.")
+
 
