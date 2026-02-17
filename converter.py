@@ -140,7 +140,6 @@ def parse_line(text: str):
             "is_fire": is_fire
         }
 
-
     
     # -----------------------------------------------------
     # SINGLE SIZE FORMAT: 70 mm2 178 lm
