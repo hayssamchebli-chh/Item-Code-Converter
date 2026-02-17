@@ -3,6 +3,43 @@ import pandas as pd
 
 ROLL_LENGTH = 92
 
+def is_fire_header(text: str) -> bool:
+    """
+    Detect if a section header represents fire resistant cables.
+    """
+    if not text:
+        return False
+
+    text = text.lower()
+    return "fire" in text or "fire resistant" in text
+
+
+def is_new_cable_section(text: str) -> bool:
+    """
+    Detect if this line represents a new cable type section.
+    """
+    if not text:
+        return False
+
+    text = text.lower()
+
+    return (
+        "cu/pvc" in text
+        or "cu/fire" in text
+        or "fire resistant" in text
+        or "swa" in text
+        or "xlpe" in text
+    )
+
+
+def row_contains_fire(text: str) -> bool:
+    """
+    Detect fire keyword inside item row itself.
+    """
+    if not text:
+        return False
+
+    return "fire" in text.lower()
 
 # =========================================================
 # PARSER
@@ -174,7 +211,7 @@ def build_earth_code(size, length):
 # TRANSFORMATION
 # =========================================================
 
-def transform_to_rows(original_text):
+def transform_to_rows(original_text, force_fire=False):    
     data = parse_line(original_text)
     rows = []
 
@@ -182,7 +219,8 @@ def transform_to_rows(original_text):
     size = data["power_size"]
     earth = data["earth_size"]
     length = data["length"]
-    is_fire = data["is_fire"]
+    is_fire = data["is_fire"] or force_fire
+
 
     text_lower = original_text.lower()
 
@@ -372,14 +410,29 @@ def transform_to_rows(original_text):
 
 def export_to_excel(input_lines, output_file="Cable_Conversion_Output.xlsx"):
     all_rows = []
+    fire_mode = False
 
     for line in input_lines:
         line = line.strip()
         if not line:
             continue
 
+        lower_line = line.lower()
+
+        # -----------------------------------------
+        # Detect section change
+        # -----------------------------------------
+        if is_new_cable_section(line):
+
+            if is_fire_header(line):
+                fire_mode = True
+            else:
+                fire_mode = False
+
+            continue  # skip section headers
+
         try:
-            all_rows.extend(transform_to_rows(line))
+            all_rows.extend(transform_to_rows(line, force_fire=fire_mode))
         except Exception as e:
             print(f"Skipped: {line} | Error: {e}")
 
@@ -387,6 +440,7 @@ def export_to_excel(input_lines, output_file="Cable_Conversion_Output.xlsx"):
     df.to_excel(output_file, index=False)
 
     print(f"✅ Excel file created: {output_file}")
+
 
 
 def convert_text_file(uploaded_file):
@@ -399,19 +453,34 @@ def convert_text_file(uploaded_file):
     lines = content.splitlines()
 
     all_rows = []
+    fire_mode = False
 
     for line in lines:
         line = line.strip()
         if not line:
             continue
 
+        # -----------------------------------------
+        # Detect section change
+        # -----------------------------------------
+        if is_new_cable_section(line):
+
+            if is_fire_header(line):
+                fire_mode = True
+            else:
+                fire_mode = False
+
+            continue
+
         try:
-            all_rows.extend(transform_to_rows(line))
+            all_rows.extend(transform_to_rows(line, force_fire=fire_mode))
         except Exception as e:
             print(f"Skipped: {line} | Error: {e}")
 
     df = pd.DataFrame(all_rows)
     return df
+
+
 
 
 
