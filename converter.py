@@ -3,6 +3,10 @@ import pandas as pd
 
 ROLL_LENGTH = 92
 
+
+def format_size(size):
+    return str(int(size)) if float(size).is_integer() else str(size)
+
 def is_fire_header(text: str) -> bool:
     """
     Detect if a section header represents fire resistant cables.
@@ -486,6 +490,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
