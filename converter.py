@@ -160,7 +160,7 @@ def build_earth_code(size, length):
     # Rule 5 — Always GN-YL--MT
     if size <= 6:
         rolls = round_rolls(length)
-        return f"CDL-NYA {int(size)} GN-YL--MT", str(rolls), "rolls"
+        return f"CDL-NYA {int(size)} GN-YL", str(rolls), "rolls"
 
     return f"CDL-NYA {int(size)} GN-YL--MT", f"{length:.2f}", "m"
 
@@ -307,5 +307,6 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
