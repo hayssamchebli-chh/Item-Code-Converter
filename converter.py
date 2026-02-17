@@ -187,13 +187,47 @@ def transform_to_rows(original_text):
     text_lower = original_text.lower()
 
     # =====================================================
-    # 1️⃣ CAT6 RULE (Priority 1)
+    # 1️⃣ FIRE RULE (Highest Priority)
+    # =====================================================
+    if is_fire:
+        # Re-detect +number inside fire case
+        plus_match = re.search(
+            r'(\d+)\s*[xX]\s*(\d+(?:\.\d+)?)\s*\+\s*(\d+(?:\.\d+)?)',
+            original_text
+        )
+    
+        if plus_match:
+            cores = int(plus_match.group(1))
+            size = float(plus_match.group(2))
+            earth = float(plus_match.group(3))
+    
+        rows.append({
+            "Original Text": original_text,
+            "Converted Code": f"CDL-SFC2XU {cores}X{int(size)} --CEI",
+            "Quantity": f"{length:.2f}",
+            "Unit": "m"
+        })
+    
+        if earth:
+            code, qty, unit = build_earth_code(earth, length)
+            rows.append({
+                "Original Text": original_text,
+                "Converted Code": code,
+                "Quantity": qty,
+                "Unit": unit
+            })
+    
+        return rows
+    
+    
+    # =====================================================
+    # 2️⃣ CAT6 RULE
     # =====================================================
     if "cat6" in text_lower:
         rolls = length / 305
         rolls = int(rolls) + (1 if rolls % 1 > 0 else 0)
         rolls = max(rolls, 1)
-
+    
         rows.append({
             "Original Text": original_text,
             "Converted Code": "NEX-CAT6UTPLSZH-GY",
@@ -201,9 +235,10 @@ def transform_to_rows(original_text):
             "Unit": ""
         })
         return rows
-
+    
+    
     # =====================================================
-    # 2️⃣ NYZ RULE (Priority 2)
+    # 3️⃣ NYZ RULE
     # =====================================================
     if "nyz" in text_lower:
         rows.append({
@@ -214,35 +249,15 @@ def transform_to_rows(original_text):
         })
         return rows
 
-    # =====================================================
-    # 3️⃣ FIRE RULE (Overrides Power Rules)
-    # =====================================================
-    if is_fire:
-        rows.append({
-            "Original Text": original_text,
-            "Converted Code": f"CDL-SFC2XU {cores}X{int(size)} --CEI",
-            "Quantity": f"{length:.2f}",
-            "Unit": "m"
-        })
-
-        if earth:
-            code, qty, unit = build_earth_code(earth, length)
-            rows.append({
-                "Original Text": original_text,
-                "Converted Code": code,
-                "Quantity": qty,
-                "Unit": unit
-            })
-
-        return rows
 
     # =====================================================
     # 4️⃣ 3xA+B LOCKED RULE
     # =====================================================
     pattern_3x_plus = re.search(
-        r'3\s*[xX]\s*(\d+(?:\.\d+)?)\s*\+\s*(\d+(?:\.\d+)?)',
+        r'\b3\s*[xX]\s*(\d+(?:\.\d+)?)\s*\+\s*(\d+(?:\.\d+)?)\b',
         original_text
     )
+
 
     if pattern_3x_plus:
         A = float(pattern_3x_plus.group(1))
@@ -298,7 +313,11 @@ def transform_to_rows(original_text):
             return rows
 
         # Detect other colors
-        color_match = re.search(r'\b(wt|bk|rd|bl|gy)\b', text_lower)
+        color_match = re.search(
+            r'\b(wt|bk|rd|bl|bu|br|gy|yl|or)\b',
+            text_lower
+        )
+
         if color_match:
             color = color_match.group(1).upper()
             rows.append({
@@ -393,6 +412,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
