@@ -123,11 +123,10 @@ def parse_line(text: str):
     # -----------------------------------------------------
     # SIMPLE 4x6 FORMAT
     # -----------------------------------------------------
-       pattern_simple = (
-            r'(?P<cores>\d+)\s*[xX]\s*'
-            r'(?P<power>\d+(?:\.\d+)?)'
-        )
-
+    pattern_simple = (
+        r'(?P<cores>\d+)\s*[xX]\s*'
+        r'(?P<power>\d+(?:\.\d+)?)'
+    )
 
     match = re.search(pattern_simple, text, re.IGNORECASE)
     if match:
@@ -487,6 +486,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
