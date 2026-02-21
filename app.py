@@ -65,7 +65,7 @@ if st.button(" Convert", use_container_width=True):
         df = pd.DataFrame(all_rows)
     
         # Keep only required columns
-        df = df[["Item", "Converted Code", "Quantity"]]
+        df = df[["Item", "Hareb Code", "Quantity"]]
     
         st.dataframe(
             df,
@@ -74,6 +74,7 @@ if st.button(" Convert", use_container_width=True):
         )
     else:
         st.info("No valid lines detected.")
+
 
 
 
