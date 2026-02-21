@@ -272,10 +272,9 @@ def transform_to_rows(original_text, force_fire=False):
             earth = float(plus_match.group(3))
     
         rows.append({
-            "Original Text": original_text,
-            "Converted Code":f"CDL-SFC2XU {cores}X{format_size(size)} --CEI",
+            "Item": "item",
+            "Hareb Code":f"CDL-SFC2XU {cores}X{format_size(size)} --CEI",
             "Quantity": f"{length:.2f}",
-            "Unit": "m"
         })
     
         if earth:
@@ -299,10 +298,10 @@ def transform_to_rows(original_text, force_fire=False):
         rolls = max(rolls, 1)
     
         rows.append({
-            "Original Text": original_text,
-            "Converted Code": "NEX-CAT6UTPLSZH-GY",
+            "Item": "item",
+            "Hareb Code": "NEX-CAT6UTPLSZH-GY",
             "Quantity": str(rolls),
-            "Unit": ""
+         
         })
         return rows
     
@@ -312,10 +311,10 @@ def transform_to_rows(original_text, force_fire=False):
     # =====================================================
     if "nyz" in text_lower:
         rows.append({
-            "Original Text": original_text,
-            "Converted Code": f"CDL-NYZ {cores}X{int(size)}",
+            "Item": "item",
+            "Hareb Code": f"CDL-NYZ {cores}X{int(size)}",
             "Quantity": f"{length:.2f}",
-            "Unit": "m"
+        
         })
         return rows
 
@@ -335,10 +334,10 @@ def transform_to_rows(original_text, force_fire=False):
 
         if B < A and A > 35:
             rows.append({
-                "Original Text": original_text,
-                "Converted Code": f"CDL-NYY 3X{format_size(A)}+{format_size(B)}SM",
+                "Item": "item",
+                "Hareb Code": f"CDL-NYY 3X{format_size(A)}+{format_size(B)}SM",
                 "Quantity": f"{length:.2f}",
-                "Unit": "m"
+             
             })
             return rows
 
@@ -375,10 +374,10 @@ def transform_to_rows(original_text, force_fire=False):
         if is_green_yellow:
             code, qty, unit = build_earth_code(size, length)
             rows.append({
-                "Original Text": original_text,
-                "Converted Code": code,
+                "Item": "item",
+                "Hareb Code": code,
                 "Quantity": qty,
-                "Unit": unit
+    
             })
             return rows
 
@@ -401,10 +400,10 @@ def transform_to_rows(original_text, force_fire=False):
         # No color → treat as earth
         code, qty, unit = build_earth_code(size, length)
         rows.append({
-            "Original Text": original_text,
-            "Converted Code": code,
+            "Item": "item",
+            "Hareb Code": code,
             "Quantity": qty,
-            "Unit": unit
+
         })
         return rows
 
@@ -414,10 +413,10 @@ def transform_to_rows(original_text, force_fire=False):
     power_code = build_power_code(cores, size)
 
     rows.append({
-        "Original Text": original_text,
-        "Converted Code": power_code,
+        "Item": "item",
+        "Hareb Code": power_code,
         "Quantity": f"{length:.2f}",
-        "Unit": "m"
+
     })
 
     # =====================================================
@@ -426,10 +425,10 @@ def transform_to_rows(original_text, force_fire=False):
     if earth:
         code, qty, unit = build_earth_code(earth, length)
         rows.append({
-            "Original Text": original_text,
-            "Converted Code": code,
+            "Item": "item",
+            "Hareb Code": code,
             "Quantity": qty,
-            "Unit": unit
+           
         })
 
     return rows
@@ -511,6 +510,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
