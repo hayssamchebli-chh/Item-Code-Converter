@@ -63,8 +63,17 @@ if st.button(" Convert", use_container_width=True):
 
     if all_rows:
         df = pd.DataFrame(all_rows)
-        st.dataframe(df, use_container_width=True)
+    
+        # Keep only required columns
+        df = df[["Item", "Converted Code", "Quantity"]]
+    
+        st.dataframe(
+            df,
+            use_container_width=True,
+            hide_index=True
+        )
     else:
         st.info("No valid lines detected.")
+
 
 
