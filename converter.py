@@ -243,116 +243,148 @@ def build_earth_code(size, length):
 # TRANSFORMATION
 # =========================================================
 
-def transform_to_rows(original_text, force_fire=False):    
-    data = parse_line(original_text)
+def transform_to_rows(original_text, force_fire=False):
+    """
+    Returns a list of output rows (dicts) using ONLY these columns:
+    - Item
+    - Hareb Code
+    - Quantity
+
+    Priority order (as per your rules):
+    FIRE → CAT6 → NYZ → 3xA+B locked → parse → 5x → +number split → single core → normal power → earth split
+    """
     rows = []
+    text = (original_text or "").strip()
+    if not text:
+        return rows
+
+    text_lower = text.lower()
+
+    # -----------------------------------------------------
+    # Helper: last numeric value in line = quantity
+    # (Used by CAT6 and 3xA+B locked rule pre-parse)
+    # -----------------------------------------------------
+    def extract_last_number_as_length(s: str) -> float:
+        nums = re.findall(r"\d+(?:\.\d+)?", s)
+        if not nums:
+            return 0.0
+        return float(nums[-1])
+
+    # =====================================================
+    # 1️⃣ FIRE RULE (Highest Priority)
+    # - fire can come from force_fire OR "fire/fr/resistant/cei" in the row itself OR parsed flag
+    # =====================================================
+    # Note: we still parse for fire rows so we can reuse your existing parsing logic.
+    # But we determine fire intent first so it works with section-headers (force_fire=True).
+    fire_intent = force_fire or bool(re.search(r"(fire|fr|resistant|cei)", text_lower, re.IGNORECASE))
+
+    if fire_intent:
+        data = parse_line(text)  # get cores/size/earth/length where possible
+
+        cores = data["cores"]
+        size = data["power_size"]
+        earth = data["earth_size"]
+        length = data["length"]
+
+        # Re-detect +number inside fire case (e.g., 4x6 + PE 6)
+        plus_match = re.search(
+            r'(\d+)\s*[xX]\s*(\d+(?:\.\d+)?)\s*\+\s*(?:PE|E)?\s*(\d+(?:\.\d+)?)',
+            text,
+            re.IGNORECASE
+        )
+        if plus_match:
+            cores = int(plus_match.group(1))
+            size = float(plus_match.group(2))
+            earth = float(plus_match.group(3))
+
+        rows.append({
+            "Item": text,
+            "Hareb Code": f"CDL-SFC2XU {cores}X{format_size(size)} --CEI",
+            "Quantity": f"{length:.2f}",
+        })
+
+        # If fire cable includes earth → split earth with NYA rule
+        if earth:
+            code, qty, _unit = build_earth_code(earth, length)
+            rows.append({
+                "Item": text,
+                "Hareb Code": code,
+                "Quantity": qty,
+            })
+
+        return rows
+
+    # =====================================================
+    # 2️⃣ CAT6 RULE (No parse needed)
+    # =====================================================
+    if "cat6" in text_lower:
+        length = extract_last_number_as_length(text)
+        rolls = length / 305.0
+        # Always round UP, min 1
+        rolls_int = int(rolls) if float(rolls).is_integer() else int(rolls) + 1
+        rolls_int = max(rolls_int, 1)
+
+        rows.append({
+            "Item": text,
+            "Hareb Code": "NEX-CAT6UTPLSZH-GY",
+            "Quantity": str(rolls_int),
+        })
+        return rows
+
+    # =====================================================
+    # 3️⃣ NYZ RULE (Parse needed to get cores/size)
+    # =====================================================
+    if "nyz" in text_lower:
+        data = parse_line(text)
+        cores = data["cores"]
+        size = data["power_size"]
+        length = data["length"]
+
+        rows.append({
+            "Item": text,
+            "Hareb Code": f"CDL-NYZ {cores}X{format_size(size)}",
+            "Quantity": f"{length:.2f}",
+        })
+        return rows
+
+    # =====================================================
+    # 4️⃣ 3xA + B LOCKED RULE (MUST run before normal parsing logic takes over)
+    # - Accept comma or plus between A and B
+    # - Trigger only if B < A and A > 35
+    # =====================================================
+    normalized_text = re.sub(r"\s+", " ", text.replace(",", "+"))
+
+    pattern_3x_plus = re.search(
+        r'3\s*[xX]\s*(?P<A>\d+(?:\.\d+)?)\s*\+\s*(?P<B>\d+(?:\.\d+)?)',
+        normalized_text,
+        re.IGNORECASE
+    )
+
+    if pattern_3x_plus:
+        A = float(pattern_3x_plus.group("A"))
+        B = float(pattern_3x_plus.group("B"))
+
+        if B < A and A > 35:
+            length = extract_last_number_as_length(text)
+            rows.append({
+                "Item": text,
+                "Hareb Code": f"CDL-NYY 3X{format_size(A)}+{format_size(B)}SM",
+                "Quantity": f"{length:.2f}",
+            })
+            return rows
+
+    # =====================================================
+    # From here onward, we parse once and apply remaining rules
+    # =====================================================
+    data = parse_line(text)
 
     cores = data["cores"]
     size = data["power_size"]
     earth = data["earth_size"]
     length = data["length"]
-    is_fire = data["is_fire"] or force_fire
-
-
-    text_lower = original_text.lower()
 
     # =====================================================
-    # 1️⃣ FIRE RULE (Highest Priority)
-    # =====================================================
-    if is_fire:
-        # Re-detect +number inside fire case
-        plus_match = re.search(
-            r'(\d+)\s*[xX]\s*(\d+(?:\.\d+)?)\s*\+\s*(\d+(?:\.\d+)?)',
-            original_text
-        )
-    
-        if plus_match:
-            cores = int(plus_match.group(1))
-            size = float(plus_match.group(2))
-            earth = float(plus_match.group(3))
-    
-        rows.append({
-            "Item": "item",
-            "Hareb Code":f"CDL-SFC2XU {cores}X{format_size(size)} --CEI",
-            "Quantity": f"{length:.2f}",
-        })
-    
-        if earth:
-            code, qty, unit = build_earth_code(earth, length)
-            rows.append({
-                "Original Text": original_text,
-                "Converted Code": code,
-                "Quantity": qty,
-                "Unit": unit
-            })
-    
-        return rows
-    
-    
-    # =====================================================
-    # 2️⃣ CAT6 RULE
-    # =====================================================
-    if "cat6" in text_lower:
-        rolls = length / 305
-        rolls = int(rolls) + (1 if rolls % 1 > 0 else 0)
-        rolls = max(rolls, 1)
-    
-        rows.append({
-            "Item": "item",
-            "Hareb Code": "NEX-CAT6UTPLSZH-GY",
-            "Quantity": str(rolls),
-         
-        })
-        return rows
-    
-    
-    # =====================================================
-    # 3️⃣ NYZ RULE
-    # =====================================================
-    if "nyz" in text_lower:
-        rows.append({
-            "Item": "item",
-            "Hareb Code": f"CDL-NYZ {cores}X{int(size)}",
-            "Quantity": f"{length:.2f}",
-        
-        })
-        return rows
-
-
-    # =====================================================
-    # 4️⃣ 3xA + B LOCKED RULE
-    # =====================================================
-    
-    normalized_text = original_text.replace(",", "+")
-    normalized_text = re.sub(r'\s+', ' ', normalized_text)
-    
-    pattern_3x_plus = re.search(
-        r'3\s*[xX]\s*'
-        r'(?P<A>\d+(?:\.\d+)?)\s*'
-        r'\+\s*'
-        r'(?P<B>\d+(?:\.\d+)?)',
-        normalized_text,
-        re.IGNORECASE
-    )
-    
-    if pattern_3x_plus:
-    
-        A = float(pattern_3x_plus.group("A"))
-        B = float(pattern_3x_plus.group("B"))
-    
-        # Extract quantity safely
-        qty_match = re.findall(r'\d+(?:\.\d+)?', original_text)
-        length = float(qty_match[-1]) if qty_match else 0
-    
-        if B < A and A > 35:
-            return [{
-                "Item": original_text,
-                "Converted Code": f"CDL-NYY 3X{format_size(A)}+{format_size(B)}SM",
-                "Quantity": f"{length:.2f}"
-            }]
-
-    # =====================================================
-    # 5️⃣ 5X RULE → 4 power + 1 earth
+    # 5️⃣ 5X RULE → 4 power + 1 earth (split)
     # =====================================================
     if cores == 5 and earth is None:
         earth = size
@@ -360,10 +392,12 @@ def transform_to_rows(original_text, force_fire=False):
 
     # =====================================================
     # 6️⃣ +NUMBER SPLIT RULE (4x10+10 etc.)
+    # - Also allow PE/E keyword optionally
     # =====================================================
     pattern_plus_number = re.search(
-        r'(\d+)\s*[xX]\s*(\d+(?:\.\d+)?)\s*\+\s*(\d+(?:\.\d+)?)',
-        original_text
+        r'(\d+)\s*[xX]\s*(\d+(?:\.\d+)?)\s*\+\s*(?:PE|E)?\s*(\d+(?:\.\d+)?)',
+        text,
+        re.IGNORECASE
     )
 
     if pattern_plus_number:
@@ -373,47 +407,38 @@ def transform_to_rows(original_text, force_fire=False):
 
     # =====================================================
     # 7️⃣ SINGLE CORE LOGIC
+    # - If green-yellow mentioned → treat as earth rule
+    # - Else if another color abbreviation found → CDL-NYA [size] [color]
+    # - Else (no color) → treat as earth rule
     # =====================================================
-    is_green_yellow = any(
-        keyword in text_lower
-        for keyword in ["yellow-green", "green-yellow", "gn-yl"]
-    )
+    is_green_yellow = any(k in text_lower for k in ["yellow-green", "green-yellow", "gn-yl", "gy/yl", "g/y"])
 
     if cores == 1:
-        # Earth
         if is_green_yellow:
-            code, qty, unit = build_earth_code(size, length)
+            code, qty, _unit = build_earth_code(size, length)
             rows.append({
-                "Item": "item",
+                "Item": text,
                 "Hareb Code": code,
                 "Quantity": qty,
-    
             })
             return rows
 
-        # Detect other colors
-        color_match = re.search(
-            r'\b(wt|bk|rd|bl|bu|br|gy|yl|or)\b',
-            text_lower
-        )
-
+        color_match = re.search(r'\b(wt|bk|rd|bl|bu|br|gy|yl|or)\b', text_lower)
         if color_match:
             color = color_match.group(1).upper()
             rows.append({
-                "Original Text": original_text,
-                "Converted Code": f"CDL-NYA {int(size)} {color}",
+                "Item": text,
+                "Hareb Code": f"CDL-NYA {format_size(size)} {color}",
                 "Quantity": f"{length:.2f}",
-                "Unit": "m"
             })
             return rows
 
-        # No color → treat as earth
-        code, qty, unit = build_earth_code(size, length)
+        # No color → treat as earth (GN-YL rule)
+        code, qty, _unit = build_earth_code(size, length)
         rows.append({
-            "Item": "item",
+            "Item": text,
             "Hareb Code": code,
             "Quantity": qty,
-
         })
         return rows
 
@@ -421,24 +446,21 @@ def transform_to_rows(original_text, force_fire=False):
     # 8️⃣ NORMAL POWER
     # =====================================================
     power_code = build_power_code(cores, size)
-
     rows.append({
-        "Item": "item",
+        "Item": text,
         "Hareb Code": power_code,
         "Quantity": f"{length:.2f}",
-
     })
 
     # =====================================================
     # 9️⃣ EARTH SPLIT (from +number or 5x)
     # =====================================================
     if earth:
-        code, qty, unit = build_earth_code(earth, length)
+        code, qty, _unit = build_earth_code(earth, length)
         rows.append({
-            "Item": "item",
+            "Item": text,
             "Hareb Code": code,
             "Quantity": qty,
-           
         })
 
     return rows
@@ -520,6 +542,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
