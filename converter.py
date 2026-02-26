@@ -81,7 +81,8 @@ def parse_line(text: str):
             "power_size": float(match.group("power")),
             "earth_size": None,
             "length": float(match.group("length")),
-            "is_fire": is_fire
+            "is_fire": is_fire,
+            "is_vj": False
         }
 
     # -----------------------------------------------------
@@ -115,7 +116,8 @@ def parse_line(text: str):
             "power_size": float(match.group("power")),
             "earth_size": None,
             "length": float(match.group("length")),
-            "is_fire": is_fire
+            "is_fire": is_fire,
+            "is_vj": False
         }
 
     # -----------------------------------------------------
@@ -136,7 +138,8 @@ def parse_line(text: str):
             "power_size": float(match.group("power")),
             "earth_size": float(match.group("earth")) if match.group("earth") else None,
             "length": float(match.group("length")),
-            "is_fire": is_fire
+            "is_fire": is_fire,
+            "is_vj": False
         }
 
     # -----------------------------------------------------
@@ -155,7 +158,8 @@ def parse_line(text: str):
             "power_size": float(match.group("power")),
             "earth_size": None,
             "length": length,
-            "is_fire": is_fire
+            "is_fire": is_fire,
+            "is_vj": False
         }
 
     
@@ -176,7 +180,8 @@ def parse_line(text: str):
             "power_size": float(match.group("power")),
             "earth_size": None,
             "length": float(match.group("length")),
-            "is_fire": is_fire
+            "is_fire": is_fire,
+            "is_vj": False
         }
     # -----------------------------------------------------
     # SC / C FORMAT: 4SC, 240 MR 50  OR  4C, 10 MR 20
@@ -197,7 +202,8 @@ def parse_line(text: str):
             "power_size": float(pattern_sc.group("power")),
             "earth_size": None,
             "length": float(pattern_sc.group("length")),
-            "is_fire": is_fire
+            "is_fire": is_fire,
+            "is_vj": False
         }
 
     raise ValueError(f"Cannot parse line: {text}")
@@ -402,17 +408,6 @@ def transform_to_rows(original_text, force_fire=False):
     earth = data["earth_size"]
     length = data["length"]
 
-    ###########################################################
-    if cores == 1:
-        # Earth if green-yellow OR VJ
-        if is_green_yellow or is_vj:
-            code, qty, _unit = build_earth_code(size, length)
-            rows.append({
-                "Item": text,
-                "Hareb Code": code,
-                "Quantity": qty,
-            })
-            return rows
 
     
     # =====================================================
@@ -446,7 +441,7 @@ def transform_to_rows(original_text, force_fire=False):
     is_green_yellow = any(k in text_lower for k in ["yellow-green", "green-yellow", "gn-yl", "gy/yl", "g/y"])
 
     if cores == 1:
-        if is_green_yellow:
+        if is_green_yellow or is_vj:
             code, qty, _unit = build_earth_code(size, length)
             rows.append({
                 "Item": text,
@@ -574,6 +569,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
