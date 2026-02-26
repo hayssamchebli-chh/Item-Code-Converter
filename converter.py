@@ -85,6 +85,21 @@ def parse_line(text: str):
         }
 
     # -----------------------------------------------------
+    # VJ EARTH FORMAT: "VJ 120mm LM 75"  => earth cable
+    # -----------------------------------------------------
+    pattern_vj = r'\bVJ\b\s*(?P<size>\d+(?:\.\d+)?)\s*(?:mm2|mm²|mm)?\b'
+    m = re.search(pattern_vj, text, re.IGNORECASE)
+    if m:
+        return {
+            "raw_text": text,
+            "cores": 1,
+            "power_size": float(m.group("size")),
+            "earth_size": None,
+            "length": length,
+            "is_fire": is_fire,
+            "is_vj": True,   # <-- add this flag
+        }
+    # -----------------------------------------------------
     # NEW FORMAT: Size (2C6) mm2 ML 20
     # -----------------------------------------------------
     pattern_parenthesis = (
@@ -381,11 +396,25 @@ def transform_to_rows(original_text, force_fire=False):
     # =====================================================
     data = parse_line(text)
 
+    is_vj = data.get("is_vj", False)
     cores = data["cores"]
     size = data["power_size"]
     earth = data["earth_size"]
     length = data["length"]
 
+    ###########################################################
+    if cores == 1:
+        # Earth if green-yellow OR VJ
+        if is_green_yellow or is_vj:
+            code, qty, _unit = build_earth_code(size, length)
+            rows.append({
+                "Item": text,
+                "Hareb Code": code,
+                "Quantity": qty,
+            })
+            return rows
+
+    
     # =====================================================
     # 5️⃣ 5X RULE → 4 power + 1 earth (split)
     # =====================================================
@@ -545,6 +574,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
