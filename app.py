@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 import io
-from converter import transform_to_rows, normalize_any_input
+from llm_extractor import extract_structure_from_text
+from converter import transform_to_rows
 
 st.set_page_config(page_title="CDL Cable Converter", layout="wide")
 
@@ -38,28 +39,36 @@ with col2:
 if st.button(" Convert", use_container_width=True):
 
     all_rows = []
-
-    # Standard cables
+    
+    # -----------------------------
+    # Standard cables (AI Structured)
+    # -----------------------------
     if standard_input.strip():
     
-        normalized_lines = normalize_any_input(standard_input)
+        try:
+            structured_items = extract_structure_from_text(standard_input)
     
-        for line in normalized_lines:
-            try:
-                all_rows.extend(transform_to_rows(line, force_fire=False))
-            except Exception:
-                st.warning(f"Skipped (Standard): {line}")
-
-    # Fire cables
+            for item in structured_items:
+                synthetic_line = f"{item['description']} {item['unit']} {item['quantity']}"
+                all_rows.extend(transform_to_rows(synthetic_line, force_fire=False))
+    
+        except Exception as e:
+            st.error(f"AI extraction failed (Standard): {e}")
+    
+    # -----------------------------
+    # Fire cables (AI Structured)
+    # -----------------------------
     if fire_input.strip():
     
-        normalized_lines = normalize_any_input(fire_input)
+        try:
+            structured_items = extract_structure_from_text(fire_input)
     
-        for line in normalized_lines:
-            try:
-                all_rows.extend(transform_to_rows(line, force_fire=True))
-            except Exception:
-                st.warning(f"Skipped (Fire): {line}")
+            for item in structured_items:
+                synthetic_line = f"{item['description']} {item['unit']} {item['quantity']}"
+                all_rows.extend(transform_to_rows(synthetic_line, force_fire=True))
+    
+        except Exception as e:
+            st.error(f"AI extraction failed (Fire): {e}")
 
     if all_rows:
         df = pd.DataFrame(all_rows)
@@ -74,6 +83,7 @@ if st.button(" Convert", use_container_width=True):
         )
     else:
         st.info("No valid lines detected.")
+
 
 
 
