@@ -2,8 +2,13 @@ from openai import OpenAI
 import json
 import os
 
-# Create client using environment variable
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+# Groq is OpenAI-compatible via this base_url
+client = OpenAI(
+    api_key=GROQ_API_KEY,
+    base_url="https://api.groq.com/openai/v1"
+)
 
 SYSTEM_PROMPT = """
 You are a BOQ (Bill of Quantities) structure extraction engine.
@@ -32,9 +37,8 @@ Each item must contain:
 """
 
 def extract_structure_from_text(raw_text: str):
-
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",   # good balance cost/performance
+    resp = client.chat.completions.create(
+        model="llama-3.1-70b-versatile",  # or "llama-3.1-8b-instant" for cheaper/faster
         temperature=0,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -42,12 +46,13 @@ def extract_structure_from_text(raw_text: str):
         ],
     )
 
-    content = response.choices[0].message.content.strip()
+    content = resp.choices[0].message.content.strip()
 
-    # Sometimes model wraps JSON in ```json blocks — remove them safely
+    # Remove ```json ... ``` if present
     if content.startswith("```"):
-        content = content.strip("`")
+        content = content.strip("`").strip()
         content = content.replace("json", "", 1).strip()
 
     return json.loads(content)
+
 
