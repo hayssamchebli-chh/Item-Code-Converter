@@ -323,8 +323,9 @@ def transform_to_rows(original_text, force_fire=False):
     # 4️⃣ 3xA+B LOCKED RULE
     # =====================================================
     pattern_3x_plus = re.search(
-        r'\b3\s*[xX]\s*(\d+(?:\.\d+)?)\s*[+,]\s*(\d+(?:\.\d+)?)\b',
-        original_text
+        r'3\s*[xX]\s*(\d+(?:\.\d+)?)\s*[+,]\s*(\d+(?:\.\d+)?)(?:\s*mm?2)?',
+        original_text,
+        re.IGNORECASE
     )
     
     if pattern_3x_plus:
@@ -508,6 +509,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
