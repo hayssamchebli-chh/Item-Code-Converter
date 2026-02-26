@@ -3,7 +3,100 @@ import pandas as pd
 
 ROLL_LENGTH = 92
 
+###########################################################################################################################
 
+def is_qty_only(line: str) -> bool:
+    return bool(re.fullmatch(r"\s*\d+(?:\.\d+)?\s*", line))
+
+def has_mm2(line: str) -> bool:
+    return "mm2" in line.lower() or "mm²" in line.lower()
+
+def ends_with_qty(line: str) -> bool:
+    return bool(re.search(r"\d+(?:\.\d+)?\s*$", line.strip()))
+
+def looks_like_unit(line: str) -> bool:
+    return line.strip().lower() in {"m", "lm", "ml", "mr", "roll", "rolls", "ls"}
+
+def looks_like_color(line: str) -> bool:
+    t = line.strip().lower()
+    return any(k in t for k in ["yellow/green", "yellow-green", "green-yellow", "red", "black", "yellow", "blue", "white", "grey", "gray", "gn-yl", "vj"])
+
+def normalize_any_input(text: str) -> list[str]:
+    """
+    Converts mixed messy input (rows + vertical blocks + pasted tables)
+    into a list of single-line items that your transform_to_rows() can parse.
+    """
+    raw_lines = [ln.strip() for ln in (text or "").splitlines()]
+    lines = [ln for ln in raw_lines if ln]  # remove blanks
+
+    out = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+
+        # If this line already looks like a full row item (mm2 + qty at end)
+        if has_mm2(line) and ends_with_qty(line):
+            out.append(line)
+            i += 1
+            continue
+
+        # BLOCK MODE: a line with mm2 but no qty → collect following lines
+        if has_mm2(line) and not ends_with_qty(line):
+            desc = line
+            color = ""
+            unit = ""
+            qty = ""
+
+            j = i + 1
+            # collect up to next ~6 lines to find color/unit/qty
+            while j < len(lines) and j <= i + 6:
+                nxt = lines[j]
+
+                if not color and looks_like_color(nxt):
+                    color = nxt
+                elif not unit and looks_like_unit(nxt):
+                    unit = nxt
+                elif is_qty_only(nxt):
+                    qty = nxt.strip()
+                    j += 1
+                    break
+
+                # sometimes pasted tables: qty can appear on a line with unit
+                if not qty and ends_with_qty(nxt) and looks_like_unit(nxt.split()[0]):
+                    qty = re.findall(r"\d+(?:\.\d+)?", nxt)[-1]
+                    unit = nxt.split()[0]
+                    j += 1
+                    break
+
+                j += 1
+
+            # If no qty found, keep original line (your converter may skip it, but we don't crash)
+            if not qty:
+                out.append(desc)
+                i += 1
+                continue
+
+            # Build a synthetic single line
+            # Example: "Single Wire NYA 4mm2 RED Roll 5"
+            synthetic = " ".join([p for p in [desc, color, unit, qty] if p])
+            out.append(synthetic)
+            i = j
+            continue
+
+        # TABLE-LIKE ROWS WITHOUT mm2 ON SAME LINE (rare):
+        # If a line is description-only and next line is qty-only, merge them.
+        if i + 1 < len(lines) and not has_mm2(line) and is_qty_only(lines[i + 1]):
+            out.append(f"{line} {lines[i+1]}")
+            i += 2
+            continue
+
+        # Otherwise pass through (it may still parse via other patterns)
+        out.append(line)
+        i += 1
+
+    return out
+
+###########################################################################################################################
 def format_size(size):
     return str(int(size)) if float(size).is_integer() else str(size)
 
@@ -571,6 +664,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
