@@ -4,7 +4,16 @@ import pandas as pd
 ROLL_LENGTH = 92
 
 ###########################################################################################################################
-
+COLOR_MAP = {
+    "red": "RD", "rd": "RD",
+    "yellow": "YL", "yl": "YL",
+    "black": "BK", "bk": "BK",
+    "blue": "BL", "bl": "BL", "bu": "BL",
+    "brown": "BR", "br": "BR",
+    "grey": "GY", "gray": "GY", "gy": "GY",
+    "white": "WT", "wt": "WT",
+    "orange": "OR", "or": "OR",
+}
 
 ###########################################################################################################################
 def format_size(size):
@@ -446,31 +455,26 @@ def transform_to_rows(original_text, force_fire=False):
     is_green_yellow = any(k in text_lower for k in ["yellow-green", "green-yellow", "gn-yl", "gy/yl", "g/y"])
 
     if cores == 1:
-        if is_green_yellow or is_vj:
-            code, qty, _unit = build_earth_code(size, length)
-            rows.append({
-                "Item": text,
-                "Hareb Code": code,
-                "Quantity": qty,
-            })
-            return rows
+        # IMPORTANT: handle Yellow/Green BEFORE normal colors
+if any(k in text_lower for k in ["yellow/green", "yellow-green", "green/yellow", "green-yellow"]):
+    code, qty, _ = build_earth_code(size, length)
+    rows.append({"Item": text, "Hareb Code": code, "Quantity": qty})
+    return rows
 
-        color_match = re.search(
-            r'\b('
-            r'red|yellow|black|blue|brown|grey|gray|white|orange|'
-            r'rd|yl|bk|bl|bu|br|gy|wt|or'
-            r')\b',
-            text_lower
-        )
-        
-        if color_match:
-            color = color_match.group(1).upper()
-            rows.append({
-                "Item": text,
-                "Hareb Code": f"CDL-NYA {format_size(size)} {color}",
-                "Quantity": f"{length:.2f}",
-            })
-            return rows
+color_match = re.search(
+    r'\b(red|yellow|black|blue|brown|grey|gray|white|orange|rd|yl|bk|bl|bu|br|gy|wt|or)\b',
+    text_lower
+)
+if color_match:
+    key = color_match.group(1).lower()
+    color_code = COLOR_MAP.get(key, key.upper())
+
+    rows.append({
+        "Item": text,
+        "Hareb Code": f"CDL-NYA {format_size(size)} {color_code}",
+        "Quantity": f"{length:.2f}",
+    })
+    return rows
 
         # No color → treat as earth (GN-YL rule)
         code, qty, _unit = build_earth_code(size, length)
@@ -581,6 +585,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
