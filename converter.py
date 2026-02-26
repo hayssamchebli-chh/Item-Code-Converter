@@ -353,17 +353,20 @@ def transform_to_rows(original_text, force_fire=False):
     # - Trigger only if B < A and A > 35
     # =====================================================
     normalized_text = re.sub(r"\s+", " ", text.replace(",", "+"))
-
+    
     pattern_3x_plus = re.search(
-        r'3\s*[xX]\s*(?P<A>\d+(?:\.\d+)?)\s*\+\s*(?P<B>\d+(?:\.\d+)?)',
+        r'3\s*[xX]\s*'
+        r'(?P<A>\d+(?:\.\d+)?)\s*'
+        r'\+\s*'
+        r'(?P<B>\d+(?:\.\d+)?)(?:\s*mm?2)?',
         normalized_text,
         re.IGNORECASE
     )
-
+    
     if pattern_3x_plus:
         A = float(pattern_3x_plus.group("A"))
         B = float(pattern_3x_plus.group("B"))
-
+    
         if B < A and A > 35:
             length = extract_last_number_as_length(text)
             rows.append({
@@ -542,6 +545,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
