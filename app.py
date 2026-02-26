@@ -41,7 +41,6 @@ if st.button(" Convert", use_container_width=True):
 
     # Standard cables
     if standard_input.strip():
-    if standard_input.strip():
     
         normalized_lines = normalize_any_input(standard_input)
     
@@ -75,6 +74,7 @@ if st.button(" Convert", use_container_width=True):
         )
     else:
         st.info("No valid lines detected.")
+
 
 
 
