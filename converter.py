@@ -276,6 +276,8 @@ def transform_to_rows(original_text, force_fire=False):
     """
     rows = []
     text = (original_text or "").strip()
+    # Convert European decimal comma to dot (e.g., 2,5 → 2.5)
+    text = re.sub(r'(\d+),(\d+)', r'\1.\2', text)
     if not text:
         return rows
 
@@ -569,6 +571,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
