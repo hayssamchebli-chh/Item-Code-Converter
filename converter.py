@@ -326,18 +326,16 @@ def transform_to_rows(original_text, force_fire=False):
         r'\b3\s*[xX]\s*(\d+(?:\.\d+)?)\s*[+,]\s*(\d+(?:\.\d+)?)\b',
         original_text
     )
-
-
+    
     if pattern_3x_plus:
         A = float(pattern_3x_plus.group(1))
         B = float(pattern_3x_plus.group(2))
-
+    
         if B < A and A > 35:
             rows.append({
-                "Item": "item",
-                "Hareb Code": f"CDL-NYY 3X{format_size(A)}+{format_size(B)}SM",
-                "Quantity": f"{length:.2f}",
-             
+                "Item": original_text,
+                "Converted Code": f"CDL-NYY 3X{format_size(A)}+{format_size(B)}SM",
+                "Quantity": f"{length:.2f}"
             })
             return rows
 
@@ -510,6 +508,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
