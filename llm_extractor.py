@@ -38,7 +38,7 @@ Each item must contain:
 
 def extract_structure_from_text(raw_text: str):
     resp = client.chat.completions.create(
-        model="llama-3.1-70b-versatile",  # or "llama-3.1-8b-instant" for cheaper/faster
+        model="llama-3.1-8b-instant",  # or "llama-3.1-8b-instant" for cheaper/faster -- llama-3.1-70b-versatile
         temperature=0,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -54,5 +54,6 @@ def extract_structure_from_text(raw_text: str):
         content = content.replace("json", "", 1).strip()
 
     return json.loads(content)
+
 
 
