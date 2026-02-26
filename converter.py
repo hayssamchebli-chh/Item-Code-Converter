@@ -465,7 +465,7 @@ def transform_to_rows(original_text, force_fire=False):
             code, qty, _ = build_earth_code(size, length)
             rows.append({
                 "Text": text,
-                "Item": "item"
+                "Item": "item",
                 "Hareb Code": code, 
                 "Quantity": qty})
             return rows
@@ -598,6 +598,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
