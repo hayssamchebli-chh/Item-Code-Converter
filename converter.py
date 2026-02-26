@@ -455,7 +455,14 @@ def transform_to_rows(original_text, force_fire=False):
             })
             return rows
 
-        color_match = re.search(r'\b(wt|bk|rd|bl|bu|br|gy|yl|or)\b', text_lower)
+        color_match = re.search(
+            r'\b('
+            r'red|yellow|black|blue|brown|grey|gray|white|orange|'
+            r'rd|yl|bk|bl|bu|br|gy|wt|or'
+            r')\b',
+            text_lower
+        )
+        
         if color_match:
             color = color_match.group(1).upper()
             rows.append({
@@ -574,6 +581,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
