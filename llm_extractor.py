@@ -13,9 +13,9 @@ client = OpenAI(
 SYSTEM_PROMPT = """
 You are a BOQ (Bill of Quantities) structure extraction engine.
 
-Your task is ONLY to extract structured cable items from messy electrical BOQ text.
+Your job is ONLY to extract structured cable items from messy electrical BOQ text and return them as JSON.
 
-You are NOT allowed to:
+You MUST NOT:
 - Apply engineering conversion rules
 - Convert cable codes
 - Calculate rolls or meters
@@ -24,28 +24,17 @@ You are NOT allowed to:
 - Infer missing technical values
 - Guess sizes that are not explicitly written
 
-Your job is ONLY to restructure messy text into clean structured cable items.
+============================================================
+INPUT CAN BE IN MANY FORMS
+============================================================
 
-------------------------------------------------------------
-🔎 INPUT MAY BE IN 2 DIFFERENT FORMS
-------------------------------------------------------------
-
-1️⃣ ROW FORMAT
-Each line already contains:
-- description
-- unit
-- quantity
-
+A) ROW FORMAT (already complete):
 Example:
-3 x 4mm2 m 80
+"3 x 4mm2 m 80"
+Extract as ONE item.
 
-In this case, extract it directly as one structured item.
-
-------------------------------------------------------------
-
-2️⃣ BLOCK FORMAT (VERY IMPORTANT)
-
-Sometimes items are written in blocks like this:
+B) BLOCK FORMAT (VERY IMPORTANT):
+Example:
 
 Single Wire NYA 4mm2
 
@@ -59,115 +48,56 @@ Yellow
 Roll
 5
 
-3
-Black
-Roll
-15
+Rules for BLOCK FORMAT:
+- The first descriptive line is the HEADER (cable identity and size).
+- The following sub-rows contain only attributes like color/unit/qty.
+- You MUST merge header + sub-row into a full item.
+- NEVER output partial items like: "Yellow Roll 5"
+- Unit can appear on its own line (e.g., "ROLL") and applies to the closest preceding item/sub-row.
+- Quantity is the FIRST numeric value that appears AFTER the unit for that same item.
+- DO NOT steal a number from the next item.
 
-In this case:
+CRITICAL:
+- If an item does not have an explicit numeric quantity, SKIP it.
+  (Do not create an item with quantity=null.)
 
-• The first line is the HEADER describing the cable.
-• The following rows contain color + unit + quantity.
-• These sub-rows DO NOT contain size or cable identity.
-• You MUST merge the header with each sub-row.
-
-Example input block:
-
-Single Wire NYA 4mm2
-RED Roll 5
-Yellow Roll 5
-
-
-Treat “ROLL” lines as the unit for the closest preceding description
-
-Quantity is the first number after the unit
-
-If quantity is missing → output quantity: null and keep the item anyway (don’t steal the next number)
-
-
-Correct structured output:
-
-[
-  {
-    "description": "Single Wire NYA 4mm2 RED",
-    "raw_text": "Single Wire NYA 4mm2 RED Roll 5",
-    "size_text": "4mm2",
-    "color": "RED",
-    "unit": "Roll",
-    "quantity": 5,
-    "is_fire_section": false
-  },
-  {
-    "description": "Single Wire NYA 4mm2 Yellow",
-    "raw_text": "Single Wire NYA 4mm2 Yellow Roll 5",
-    "size_text": "4mm2",
-    "color": "Yellow",
-    "unit": "Roll",
-    "quantity": 5,
-    "is_fire_section": false
-  }
-]
-
-❗ NEVER output partial rows like:
-"Yellow Roll 5"
-without merging it with its cable header.
-
-------------------------------------------------------------
-🔥 FIRE SECTION DETECTION
-------------------------------------------------------------
-
-If a section header contains:
+============================================================
+FIRE SECTION DETECTION
+============================================================
+If a section header contains any of:
 - fire
 - fire resistant
 - FR
 - CEI
+then set is_fire_section=true for ALL following items until another cable section header appears.
 
-Then set:
-"is_fire_section": true
+If a row itself contains fire keywords, that item must have is_fire_section=true.
 
-All items following that header belong to fire section until another cable section appears.
+============================================================
+OUTPUT FORMAT (STRICT)
+============================================================
+Return STRICT JSON array ONLY. No text. No markdown. No ```.
 
-If a row itself contains fire keywords, mark that item as:
-"is_fire_section": true
-
-------------------------------------------------------------
-📦 OUTPUT FORMAT RULES
-------------------------------------------------------------
-
-Return STRICT JSON array only.
-Do NOT return explanation.
-Do NOT wrap inside markdown.
-Do NOT use ```json blocks.
-Return only valid JSON.
-
-Each item MUST contain:
-
+Each item MUST contain exactly these fields:
 {
   "description": "...",
   "raw_text": "...",
-  "size_text": "...",
+  "size_text": null or "...",
   "color": null or "...",
   "unit": null or "...",
   "quantity": number,
   "is_fire_section": boolean
 }
 
-If color is not mentioned → use null.
-If unit is not mentioned → use null.
-If size is not explicitly written → use null.
-If quantity is missing → do NOT create the item.
-
-Do NOT create fake items.
-Only extract real cable items.
-Ignore headings like:
-Item
-Description
-Unit
-Quantity
-Notes
-Total
-
-Only return real cable entries."""
+Rules:
+- description should be a clean merged description including size and color if present.
+- raw_text should be the merged original meaning (header + subrow).
+- If color not mentioned, use null.
+- If unit not mentioned, use null.
+- If size not explicitly written, use null.
+- Ignore headings like: Item, Description, Unit, Quantity, Total, Notes.
+- Only output real cable entries with a numeric quantity.
+"""
 
 def extract_structure_from_text(raw_text: str):
     resp = client.chat.completions.create(
@@ -186,7 +116,31 @@ def extract_structure_from_text(raw_text: str):
         content = content.strip("`").strip()
         content = content.replace("json", "", 1).strip()
 
+        items = json.loads(content)
+
+    # Safety cleanup (drop bad items)
+    cleaned = []
+    for it in items:
+        try:
+            qty = it.get("quantity", None)
+            if qty is None:
+                continue
+            qty = float(qty)
+            cleaned.append({
+                "description": it.get("description"),
+                "raw_text": it.get("raw_text"),
+                "size_text": it.get("size_text"),
+                "color": it.get("color"),
+                "unit": it.get("unit"),
+                "quantity": qty,
+                "is_fire_section": bool(it.get("is_fire_section", False))
+            })
+        except Exception:
+            continue
+
+    return cleaned
     return json.loads(content)
+
 
 
 
