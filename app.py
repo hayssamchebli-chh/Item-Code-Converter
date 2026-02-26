@@ -26,7 +26,7 @@ with col1:
 # RIGHT COLUMN → Fire
 # -----------------------------
 with col2:
-    st.markdown("### 🔥 Fire Cables")
+    st.markdown("### 🔴 Fire Cables")
     fire_input = st.text_area(
         "Paste Fire Cable Lines:",
         height=200,
@@ -83,6 +83,7 @@ if st.button(" Convert", use_container_width=True):
         )
     else:
         st.info("No valid lines detected.")
+
 
 
 
