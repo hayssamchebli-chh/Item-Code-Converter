@@ -320,24 +320,37 @@ def transform_to_rows(original_text, force_fire=False):
 
 
     # =====================================================
-    # 4️⃣ 3xA+B LOCKED RULE
+    # 4️⃣ 3xA + B LOCKED RULE
     # =====================================================
+    
+    # Normalize text to avoid spacing issues
+    normalized_text = original_text.replace(",", "+")
+    normalized_text = re.sub(r'\s+', ' ', normalized_text)
+    
     pattern_3x_plus = re.search(
-        r'3\s*[xX]\s*(\d+(?:\.\d+)?)\s*[+,]\s*(\d+(?:\.\d+)?)(?:\s*mm?2)?',
-        original_text,
+        r'3\s*[xX]\s*'
+        r'(?P<A>\d+(?:\.\d+)?)\s*'
+        r'\+\s*'
+        r'(?P<B>\d+(?:\.\d+)?)'
+        r'(?:\s*mm?2)?',
+        normalized_text,
         re.IGNORECASE
     )
     
     if pattern_3x_plus:
-        A = float(pattern_3x_plus.group(1))
-        B = float(pattern_3x_plus.group(2))
     
+        A = float(pattern_3x_plus.group("A"))
+        B = float(pattern_3x_plus.group("B"))
+    
+        # Apply locked condition
         if B < A and A > 35:
+    
             rows.append({
                 "Item": original_text,
                 "Converted Code": f"CDL-NYY 3X{format_size(A)}+{format_size(B)}SM",
                 "Quantity": f"{length:.2f}"
             })
+    
             return rows
 
     # =====================================================
@@ -509,6 +522,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
