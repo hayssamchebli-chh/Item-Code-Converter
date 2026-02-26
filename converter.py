@@ -463,7 +463,11 @@ def transform_to_rows(original_text, force_fire=False):
         # IMPORTANT: handle Yellow/Green BEFORE normal colors
         if any(k in text_lower for k in ["yellow/green", "yellow-green", "green/yellow", "green-yellow"]):
             code, qty, _ = build_earth_code(size, length)
-            rows.append({"Item": text, "Hareb Code": code, "Quantity": qty})
+            rows.append({
+                "Text": text,
+                "Item": "item"
+                "Hareb Code": code, 
+                "Quantity": qty})
             return rows
         
         color_match = re.search(
@@ -594,46 +598,6 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
