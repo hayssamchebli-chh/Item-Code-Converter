@@ -334,7 +334,7 @@ def transform_to_rows(original_text, force_fire=False):
 
         rows.append({
             "Text": text,
-            "Item":"item"
+            "Item":"item",
             "Hareb Code": f"CDL-SFC2XU {cores}X{format_size(size)} --CEI",
             "Quantity": f"{length:.2f}",
         })
@@ -344,7 +344,7 @@ def transform_to_rows(original_text, force_fire=False):
             code, qty, _unit = build_earth_code(earth, length)
             rows.append({
                 "Text": text,
-                "Item":"item"
+                "Item":"item",
                 "Hareb Code": code,
                 "Quantity": qty,
             })
@@ -363,7 +363,7 @@ def transform_to_rows(original_text, force_fire=False):
 
         rows.append({
             "Text": text,
-            "Item":"item"
+            "Item":"item",
             "Hareb Code": "NEX-CAT6UTPLSZH-GY",
             "Quantity": str(rolls_int),
         })
@@ -410,7 +410,7 @@ def transform_to_rows(original_text, force_fire=False):
             length = extract_last_number_as_length(text)
             rows.append({
                 "Text": text,
-                "Item":"item"
+                "Item":"item",
                 "Hareb Code": f"CDL-NYY 3X{format_size(A)}+{format_size(B)}SM",
                 "Quantity": f"{length:.2f}",
             })
@@ -476,7 +476,7 @@ def transform_to_rows(original_text, force_fire=False):
         
             rows.append({
                 "Text": text,
-                "Item":"item"
+                "Item":"item",
                 "Hareb Code": f"CDL-NYA {format_size(size)} {color_code}",
                 "Quantity": f"{length:.2f}",
             })
@@ -485,7 +485,8 @@ def transform_to_rows(original_text, force_fire=False):
         # No color → treat as earth (GN-YL rule)
         code, qty, _unit = build_earth_code(size, length)
         rows.append({
-            "Item": text,
+            "Text": text,
+            "Item":"item",
             "Hareb Code": code,
             "Quantity": qty,
         })
@@ -497,7 +498,7 @@ def transform_to_rows(original_text, force_fire=False):
     power_code = build_power_code(cores, size)
     rows.append({
         "Text": text,
-        "Item":"item"
+        "Item":"item",
         "Hareb Code": power_code,
         "Quantity": f"{length:.2f}",
     })
@@ -509,7 +510,7 @@ def transform_to_rows(original_text, force_fire=False):
         code, qty, _unit = build_earth_code(earth, length)
         rows.append({
             "Text": text,
-            "Item":"item"
+            "Item":"item",
             "Hareb Code": code,
             "Quantity": qty,
         })
@@ -593,6 +594,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
