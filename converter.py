@@ -333,7 +333,8 @@ def transform_to_rows(original_text, force_fire=False):
             earth = float(plus_match.group(3))
 
         rows.append({
-            "Item": text,
+            "Text": text,
+            "Item":"item"
             "Hareb Code": f"CDL-SFC2XU {cores}X{format_size(size)} --CEI",
             "Quantity": f"{length:.2f}",
         })
@@ -592,6 +593,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
