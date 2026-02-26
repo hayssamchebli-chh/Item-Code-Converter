@@ -5,123 +5,6 @@ ROLL_LENGTH = 92
 
 ###########################################################################################################################
 
-def has_mm2(line: str) -> bool:
-    t = line.lower()
-    return ("mm2" in t) or ("mm²" in t)
-
-def is_qty_only(line: str) -> bool:
-    return bool(re.fullmatch(r"\s*\d+(?:\.\d+)?\s*", line))
-
-def looks_like_unit(line: str) -> bool:
-    return line.strip().lower() in {"m", "lm", "ml", "mr", "roll", "rolls", "ls"}
-
-def looks_like_color(line: str) -> bool:
-    t = line.strip().lower()
-    return any(k in t for k in [
-        "yellow/green", "yellow-green", "green-yellow", "yellow", "green", "red",
-        "black", "blue", "white", "grey", "gray", "gn-yl", "vj"
-    ])
-
-def is_item_number(line: str) -> bool:
-    return bool(re.fullmatch(r"\s*\d+\s*", line))
-
-def normalize_any_input(text: str) -> list[str]:
-    """
-    Handles mixed:
-    - Normal rows (mm2 + qty on same line)
-    - Block items (mm2 then color/unit/qty)
-    - Table-style where ONE description applies to MANY item lines
-    """
-    raw_lines = [ln.strip() for ln in (text or "").splitlines()]
-    lines = [ln for ln in raw_lines if ln]
-
-    out = []
-    current_desc = ""  # remembers latest "description with mm2"
-
-    i = 0
-    while i < len(lines):
-        line = lines[i]
-
-        low = line.lower()
-
-        # Skip obvious table headers
-        if low in {"item", "description", "unit", "quantity"}:
-            i += 1
-            continue
-
-        # 1) If line contains mm2, treat it as a new description context
-        #    If it's also a complete row with qty, output directly.
-        if has_mm2(line):
-            # If it ends with a qty, it's a row item already.
-            if re.search(r"\d+(?:\.\d+)?\s*$", line):
-                out.append(line)
-                current_desc = ""  # optional: reset
-                i += 1
-                continue
-
-            # Otherwise: store as current description for upcoming item rows
-            current_desc = line
-            i += 1
-            continue
-
-        # 2) Table-style sub-rows: (item_no) -> (color) -> (unit) -> (qty)
-        if current_desc and is_item_number(line):
-            item_no = line.strip()
-            color = ""
-            unit = ""
-            qty = ""
-
-            # read next 1-4 lines safely
-            j = i + 1
-            while j < len(lines) and j <= i + 4:
-                nxt = lines[j]
-
-                if not color and looks_like_color(nxt):
-                    color = nxt
-                elif not unit and looks_like_unit(nxt):
-                    unit = nxt
-                elif is_qty_only(nxt):
-                    qty = nxt.strip()
-                    j += 1
-                    break
-
-                j += 1
-
-            if qty:
-                synthetic = " ".join([p for p in [current_desc, color, unit, qty] if p])
-                out.append(synthetic)
-                i = j
-                continue
-
-        # 3) If we’re inside a description and see color/unit/qty without item_no,
-        #    still try to form one row (some formats omit item numbers).
-        if current_desc and looks_like_color(line):
-            color = line
-            unit = ""
-            qty = ""
-
-            j = i + 1
-            while j < len(lines) and j <= i + 3:
-                nxt = lines[j]
-                if not unit and looks_like_unit(nxt):
-                    unit = nxt
-                elif is_qty_only(nxt):
-                    qty = nxt.strip()
-                    j += 1
-                    break
-                j += 1
-
-            if qty:
-                synthetic = " ".join([p for p in [current_desc, color, unit, qty] if p])
-                out.append(synthetic)
-                i = j
-                continue
-
-        # 4) Otherwise pass through (might still parse as normal cable line)
-        out.append(line)
-        i += 1
-
-    return out
 
 ###########################################################################################################################
 def format_size(size):
@@ -691,6 +574,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
