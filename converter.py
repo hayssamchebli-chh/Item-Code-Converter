@@ -380,7 +380,7 @@ def transform_to_rows(original_text, force_fire=False):
 
         rows.append({
             "Text": text,
-            "Item":"item"
+            "Item":"item",
             "Hareb Code": f"CDL-NYZ {cores}X{format_size(size)}",
             "Quantity": f"{length:.2f}",
         })
@@ -594,6 +594,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
