@@ -1,5 +1,9 @@
-import openai
+from openai import OpenAI
 import json
+import os
+
+# Create client using environment variable
+client = OpenAI(api_key=os.getenv("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"))
 
 SYSTEM_PROMPT = """
 You are a BOQ (Bill of Quantities) structure extraction engine.
@@ -29,15 +33,20 @@ Each item must contain:
 
 def extract_structure_from_text(raw_text: str):
 
-    response = openai.ChatCompletion.create(
-        model="gpt-4o-mini",  # or your model
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",   # good balance cost/performance
+        temperature=0,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": f"Extract structured cable items from:\n\n{raw_text}"}
         ],
-        temperature=0
     )
 
     content = response.choices[0].message.content.strip()
+
+    # Sometimes model wraps JSON in ```json blocks — remove them safely
+    if content.startswith("```"):
+        content = content.strip("`")
+        content = content.replace("json", "", 1).strip()
 
     return json.loads(content)
