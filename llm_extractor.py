@@ -99,9 +99,14 @@ Rules:
 - Only output real cable entries with a numeric quantity.
 """
 
+
+
+###############################################
+
+
 def extract_structure_from_text(raw_text: str):
     resp = client.chat.completions.create(
-        model="llama-3.1-8b-instant",  # or "llama-3.1-8b-instant" for cheaper/faster -- llama-3.1-70b-versatile
+        model="llama-3.1-8b-instant",
         temperature=0,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -116,7 +121,8 @@ def extract_structure_from_text(raw_text: str):
         content = content.strip("`").strip()
         content = content.replace("json", "", 1).strip()
 
-        items = json.loads(content)
+    # ✅ ALWAYS parse JSON here
+    items = json.loads(content)
 
     # Safety cleanup (drop bad items)
     cleaned = []
@@ -125,7 +131,9 @@ def extract_structure_from_text(raw_text: str):
             qty = it.get("quantity", None)
             if qty is None:
                 continue
+
             qty = float(qty)
+
             cleaned.append({
                 "description": it.get("description"),
                 "raw_text": it.get("raw_text"),
@@ -139,10 +147,3 @@ def extract_structure_from_text(raw_text: str):
             continue
 
     return cleaned
-    return json.loads(content)
-
-
-
-
-
-
