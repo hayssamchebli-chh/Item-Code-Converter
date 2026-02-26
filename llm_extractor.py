@@ -3,7 +3,7 @@ import json
 import os
 
 # Create client using environment variable
-client = OpenAI(api_key=os.getenv("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"))
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 SYSTEM_PROMPT = """
 You are a BOQ (Bill of Quantities) structure extraction engine.
@@ -50,3 +50,4 @@ def extract_structure_from_text(raw_text: str):
         content = content.replace("json", "", 1).strip()
 
     return json.loads(content)
+
