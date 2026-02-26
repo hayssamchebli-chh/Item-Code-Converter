@@ -323,7 +323,6 @@ def transform_to_rows(original_text, force_fire=False):
     # 4️⃣ 3xA + B LOCKED RULE
     # =====================================================
     
-    # Normalize text to avoid spacing issues
     normalized_text = original_text.replace(",", "+")
     normalized_text = re.sub(r'\s+', ' ', normalized_text)
     
@@ -331,8 +330,7 @@ def transform_to_rows(original_text, force_fire=False):
         r'3\s*[xX]\s*'
         r'(?P<A>\d+(?:\.\d+)?)\s*'
         r'\+\s*'
-        r'(?P<B>\d+(?:\.\d+)?)'
-        r'(?:\s*mm?2)?',
+        r'(?P<B>\d+(?:\.\d+)?)',
         normalized_text,
         re.IGNORECASE
     )
@@ -342,16 +340,16 @@ def transform_to_rows(original_text, force_fire=False):
         A = float(pattern_3x_plus.group("A"))
         B = float(pattern_3x_plus.group("B"))
     
-        # Apply locked condition
-        if B < A and A > 35:
+        # Extract quantity safely
+        qty_match = re.findall(r'\d+(?:\.\d+)?', original_text)
+        length = float(qty_match[-1]) if qty_match else 0
     
-            rows.append({
+        if B < A and A > 35:
+            return [{
                 "Item": original_text,
                 "Converted Code": f"CDL-NYY 3X{format_size(A)}+{format_size(B)}SM",
                 "Quantity": f"{length:.2f}"
-            })
-    
-            return rows
+            }]
 
     # =====================================================
     # 5️⃣ 5X RULE → 4 power + 1 earth
@@ -522,6 +520,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
