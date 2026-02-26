@@ -77,6 +77,14 @@ Single Wire NYA 4mm2
 RED Roll 5
 Yellow Roll 5
 
+
+Treat “ROLL” lines as the unit for the closest preceding description
+
+Quantity is the first number after the unit
+
+If quantity is missing → output quantity: null and keep the item anyway (don’t steal the next number)
+
+
 Correct structured output:
 
 [
@@ -179,6 +187,7 @@ def extract_structure_from_text(raw_text: str):
         content = content.replace("json", "", 1).strip()
 
     return json.loads(content)
+
 
 
 
