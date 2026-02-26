@@ -456,25 +456,25 @@ def transform_to_rows(original_text, force_fire=False):
 
     if cores == 1:
         # IMPORTANT: handle Yellow/Green BEFORE normal colors
-if any(k in text_lower for k in ["yellow/green", "yellow-green", "green/yellow", "green-yellow"]):
-    code, qty, _ = build_earth_code(size, length)
-    rows.append({"Item": text, "Hareb Code": code, "Quantity": qty})
-    return rows
-
-color_match = re.search(
-    r'\b(red|yellow|black|blue|brown|grey|gray|white|orange|rd|yl|bk|bl|bu|br|gy|wt|or)\b',
-    text_lower
-)
-if color_match:
-    key = color_match.group(1).lower()
-    color_code = COLOR_MAP.get(key, key.upper())
-
-    rows.append({
-        "Item": text,
-        "Hareb Code": f"CDL-NYA {format_size(size)} {color_code}",
-        "Quantity": f"{length:.2f}",
-    })
-    return rows
+        if any(k in text_lower for k in ["yellow/green", "yellow-green", "green/yellow", "green-yellow"]):
+            code, qty, _ = build_earth_code(size, length)
+            rows.append({"Item": text, "Hareb Code": code, "Quantity": qty})
+            return rows
+        
+        color_match = re.search(
+            r'\b(red|yellow|black|blue|brown|grey|gray|white|orange|rd|yl|bk|bl|bu|br|gy|wt|or)\b',
+            text_lower
+        )
+        if color_match:
+            key = color_match.group(1).lower()
+            color_code = COLOR_MAP.get(key, key.upper())
+        
+            rows.append({
+                "Item": text,
+                "Hareb Code": f"CDL-NYA {format_size(size)} {color_code}",
+                "Quantity": f"{length:.2f}",
+            })
+            return rows
 
         # No color → treat as earth (GN-YL rule)
         code, qty, _unit = build_earth_code(size, length)
@@ -585,6 +585,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
