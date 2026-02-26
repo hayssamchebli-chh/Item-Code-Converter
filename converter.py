@@ -179,7 +179,7 @@ def parse_line(text: str):
     # SINGLE SIZE FORMAT: 70 mm2 178 lm
     # -----------------------------------------------------
     pattern_single_size = (
-        r'(?P<power>\d+(?:\.\d+)?)\s*mm2'
+        r'(?P<power>\d+(?:\.\d+)?)\s*mm(?:2|²)?\b'
         r'.*?'
         r'(?P<length>\d+(?:\.\d+)?)\s*(?:lm|ml|m)?\s*$'
     )
@@ -292,7 +292,11 @@ def transform_to_rows(original_text, force_fire=False):
     text = re.sub(r'(\d+),(\d+)', r'\1.\2', text)
     if not text:
         return rows
-
+    # Remove repeated ROLL words: "ROLL ROLL" -> "ROLL"
+    text = re.sub(r'\bROLL\b(?:\s+\bROLL\b)+', 'ROLL', text, flags=re.IGNORECASE)
+    
+    # Optional: normalize "mm" to "mm2" when it looks like size (e.g., "6mm Green" -> "6mm2 Green")
+    text = re.sub(r'(\d+(?:\.\d+)?)\s*mm\b', r'\1 mm2', text, flags=re.IGNORECASE)
     text_lower = text.lower()
 
     # -----------------------------------------------------
@@ -598,6 +602,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
