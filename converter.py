@@ -73,7 +73,7 @@ def parse_line(text: str):
     length = float(qty_match[-1])
 
     # Detect fire cable
-    is_fire = bool(re.search(r"(fire|fr|resistant|cei)", text, re.IGNORECASE))
+    is_fire = bool(re.search(r"\b(fire|fr|resistant|cei)\b", text, re.IGNORECASE))
 
     # -----------------------------------------------------
     # PRIORITY PATTERN: (4X150mm2)
@@ -315,8 +315,17 @@ def transform_to_rows(original_text, force_fire=False):
     # =====================================================
     # Note: we still parse for fire rows so we can reuse your existing parsing logic.
     # But we determine fire intent first so it works with section-headers (force_fire=True).
-    fire_intent = force_fire or bool(re.search(r"(fire|fr|resistant|cei)", text_lower, re.IGNORECASE))
-
+    # HARD OVERRIDE:
+    # - force_fire=True  => always fire
+    # - force_fire=False => never fire (even if keywords exist)
+    # - force_fire=None  => keyword detection allowed (only if you ever use None)
+    if force_fire is True:
+        fire_intent = True
+    elif force_fire is False:
+        fire_intent = False
+    else:
+        fire_intent = bool(re.search(r"\b(fire|fr|resistant|cei)\b", text_lower, re.IGNORECASE))
+        
     if fire_intent:
         data = parse_line(text)  # get cores/size/earth/length where possible
 
@@ -602,6 +611,7 @@ def convert_text_file(uploaded_file):
 
     df = pd.DataFrame(all_rows)
     return df
+
 
 
 
