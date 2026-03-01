@@ -1,10 +1,10 @@
 from openai import OpenAI
 import json
 import os
+import re
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# Groq is OpenAI-compatible via this base_url
 client = OpenAI(
     api_key=GROQ_API_KEY,
     base_url="https://api.groq.com/openai/v1"
@@ -99,10 +99,29 @@ Rules:
 - Only output real cable entries with a numeric quantity.
 """
 
+def _strip_code_fences(s: str) -> str:
+    s = s.strip()
+    if s.startswith("```"):
+        s = re.sub(r"^```(?:json)?", "", s.strip(), flags=re.IGNORECASE).strip()
+        s = re.sub(r"```$", "", s.strip()).strip()
+    return s
 
+def _extract_json_array(s: str) -> str:
+    """
+    Extract the first JSON array from text.
+    """
+    s = s.strip()
+    start = s.find("[")
+    end = s.rfind("]")
+    if start != -1 and end != -1 and end > start:
+        return s[start:end+1]
+    return s
 
-###############################################
-
+def _remove_control_chars(s: str) -> str:
+    """
+    Remove ASCII control characters that break json.loads.
+    """
+    return re.sub(r"[\x00-\x1F\x7F]", "", s)
 
 def extract_structure_from_text(raw_text: str):
     resp = client.chat.completions.create(
@@ -114,24 +133,33 @@ def extract_structure_from_text(raw_text: str):
         ],
     )
 
-    content = resp.choices[0].message.content.strip()
+    content = resp.choices[0].message.content or ""
+    content = _strip_code_fences(content)
+    content = _extract_json_array(content)
+    content = _remove_control_chars(content)
 
-    # Remove ```json ... ``` if present
-    if content.startswith("```"):
-        content = content.strip("`").strip()
-        content = content.replace("json", "", 1).strip()
-
-    # ✅ ALWAYS parse JSON here
-    items = json.loads(content)
+    # Parse JSON safely
+    try:
+        items = json.loads(content)
+    except json.JSONDecodeError as e:
+        # Show a helpful snippet for debugging
+        snippet = content[max(0, e.pos-40): e.pos+40]
+        raise ValueError(f"LLM returned invalid JSON near: {snippet}") from e
 
     # Safety cleanup (drop bad items)
     cleaned = []
+    if isinstance(items, dict):
+        # sometimes model returns {"items":[...]}
+        if "items" in items and isinstance(items["items"], list):
+            items = items["items"]
+        else:
+            items = []
+
     for it in items:
         try:
             qty = it.get("quantity", None)
             if qty is None:
                 continue
-
             qty = float(qty)
 
             cleaned.append({
