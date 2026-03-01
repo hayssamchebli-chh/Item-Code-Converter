@@ -39,56 +39,63 @@ with col2:
 if st.button(" Convert", use_container_width=True):
 
     all_rows = []
-    
+
+    def safe_unit(u):
+        u = (u or "").strip()
+        return u if u else "M"   # default; you can change to "ROLL" if you prefer
+
     # -----------------------------
     # Standard cables (AI Structured)
     # -----------------------------
     if standard_input.strip():
-    
         try:
             structured_items = extract_structure_from_text(standard_input)
-    
+
             for item in structured_items:
-                synthetic_line = f"{item['description']} {item['unit']} {item['quantity']}"
+                # HARD OVERRIDE: standard box must never convert as fire
+                item["is_fire_section"] = False
+
+                unit = safe_unit(item.get("unit"))
+                desc = (item.get("description") or "").strip()
+                qty = item.get("quantity")
+
+                if not desc or qty is None:
+                    continue
+
+                synthetic_line = f"{desc} {unit} {qty}"
                 all_rows.extend(transform_to_rows(synthetic_line, force_fire=False))
-    
+
         except Exception as e:
             st.error(f"AI extraction failed (Standard): {e}")
-    
+
     # -----------------------------
     # Fire cables (AI Structured)
     # -----------------------------
     if fire_input.strip():
-    
         try:
             structured_items = extract_structure_from_text(fire_input)
-    
+
             for item in structured_items:
-                synthetic_line = f"{item['description']} {item['unit']} {item['quantity']}"
+                # HARD OVERRIDE: fire box must always convert as fire
+                item["is_fire_section"] = True
+
+                unit = safe_unit(item.get("unit"))
+                desc = (item.get("description") or "").strip()
+                qty = item.get("quantity")
+
+                if not desc or qty is None:
+                    continue
+
+                synthetic_line = f"{desc} {unit} {qty}"
                 all_rows.extend(transform_to_rows(synthetic_line, force_fire=True))
-    
+
         except Exception as e:
             st.error(f"AI extraction failed (Fire): {e}")
 
     if all_rows:
         df = pd.DataFrame(all_rows)
-    
-        # Keep only required columns
-        df = df[["Text","Item", "Hareb Code", "Quantity"]]
-    
-        st.dataframe(
-            df,
-            use_container_width=True,
-            hide_index=True
-        )
+        df = df[["Text", "Item", "Hareb Code", "Quantity"]]
+        st.dataframe(df, use_container_width=True, hide_index=True)
     else:
         st.info("No valid lines detected.")
-
-
-
-
-
-
-
-
 
