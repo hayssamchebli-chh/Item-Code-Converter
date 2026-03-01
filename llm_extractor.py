@@ -232,7 +232,8 @@ def extract_structure_from_text(raw_text: str):
         temperature=0,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"Extract structured cable items from:\n\n{raw_text}"}
+            # reinforce strict JSON
+            {"role": "user", "content": f"Extract structured cable items from:\n\n{raw_text}\n\nReturn STRICT JSON array only."}
         ],
     )
 
@@ -240,19 +241,18 @@ def extract_structure_from_text(raw_text: str):
     content = _strip_code_fences(content)
     content = _extract_json_array(content)
 
-    # First sanitize (smart), then also remove any remaining control chars outside strings
+    # Only do the smart sanitizer (don’t globally strip control chars afterward)
     content = _sanitize_json_control_chars(content)
-    content = _remove_control_chars_outside_strings(content)
 
     items = None
 
-    # 1) Fast path: normal JSON parse
+    # 1) Try parsing full JSON first
     try:
         items = json.loads(content)
     except json.JSONDecodeError:
         items = None
 
-    # 2) Salvage path: parse objects one-by-one, skip invalid ones
+    # 2) Salvage: parse object by object
     if items is None:
         salvage = []
         for obj_txt in _extract_top_level_json_objects(content):
@@ -260,13 +260,12 @@ def extract_structure_from_text(raw_text: str):
             try:
                 salvage.append(json.loads(obj_txt))
             except Exception:
-                # skip bad object
                 continue
         items = salvage
 
-    # Handle {"items":[...]} shape
+    # Normalize shape: sometimes {"items":[...]}
     if isinstance(items, dict):
-        if "items" in items and isinstance(items["items"], list):
+        if isinstance(items.get("items"), list):
             items = items["items"]
         else:
             items = []
@@ -274,7 +273,7 @@ def extract_structure_from_text(raw_text: str):
     if not isinstance(items, list):
         items = []
 
-    # Safety cleanup (drop bad items; keep the rest)
+    # Clean items: skip bad ones, keep rest
     cleaned = []
     for it in items:
         if not isinstance(it, dict):
